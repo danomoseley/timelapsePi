@@ -54,4 +54,3 @@ cron=$(sed "s,.*#DAILY_TIMELAPSE_COMMAND,$daily_timelapse_cron,g" <<< "$cron")
 
 echo "$cron" | crontab -
 #echo "$cron"
-

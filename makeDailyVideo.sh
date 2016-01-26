@@ -40,4 +40,3 @@ else
     mv /tmp/$date.mp4 $destination
     scp -pr $destination/$date.mp4 $REMOTE_SERVER_HOST:$REMOTE_SERVER_PATH/latest_vid.mp4
 fi
-

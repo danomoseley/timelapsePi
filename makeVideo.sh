@@ -40,4 +40,3 @@ filepath=$destination/$timestamp-$minutes.mp4
 rm -R $temp_folder
 
 echo $filepath
-
