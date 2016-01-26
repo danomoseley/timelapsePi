@@ -39,9 +39,9 @@ fi
 
 cron_hour_end=$((sunset_hour-1))
 
-sunrise_cron="$sunrise_minute-59 $sunrise_hour * * * $command #SUNRISE_COMMAND"
+sunrise_cron="$sunrise_minute-59 $sunrise_hour * * * $command $sunrise_minute #SUNRISE_COMMAND"
 range_cron="* $cron_hour_start-$cron_hour_end * * * $command #RANGE_COMMAND"
-sunset_cron="0-$sunset_minute $sunset_hour * * * $command #SUNSET_COMMAND"
+sunset_cron="0-$sunset_minute $sunset_hour * * * $command $sunset_minute #SUNSET_COMMAND"
 daily_timelapse_cron="$daily_timelapse_minute $daily_timelapse_hour * * * $daily_timelapse_command #DAILY_TIMELAPSE_COMMAND"
 hourly_timelapse_cron="0 $cron_hour_start-$sunset_hour * * * $hourly_timelapse_command #RANGE_HOURLY_TIMELAPSE_COMMAND"
 
