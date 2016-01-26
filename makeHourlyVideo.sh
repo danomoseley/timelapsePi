@@ -5,9 +5,9 @@ source $DIR/config.cfg
 
 date=$(date +"%y%m%d")
 date_hour=$(date +"%y%m%d%H")
-path="$DIR/archive/$date"
-destination="$DIR/timelapse"
-temp_folder=$destination/$date_hour
+path="$DIR/archive/photo/$date"
+destination="$DIR/archive/timelapse/$date"
+temp_folder=/tmp/$date_hour
 
 if [ ! -d $destination ]; then
     mkdir $destination

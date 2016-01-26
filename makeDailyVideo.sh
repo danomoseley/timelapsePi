@@ -7,9 +7,9 @@ date=$(date +"%y%m%d")
 if [ ! -z "$1" ]; then
     date=$1
 fi
-path="$DIR/archive/$date"
-destination="$DIR/timelapse"
-temp_folder=$destination/$date
+path="$DIR/archive/photo/$date"
+destination="$DIR/archive/timelapse"
+temp_folder=/tmp/$date
 
 if [ ! -d $destination ]; then
     mkdir $destination
@@ -36,6 +36,6 @@ if [ $OUT -ne 0 ];then
     echo ERROR
     exit $OUT
 else
-    scp -pr $destination/$date.mp4 $REMOTE_SERVER_HOST:$REMOTE_SERVER_PATH/timelapse/${date}.mp4
     scp -pr $destination/$date.mp4 $REMOTE_SERVER_HOST:$REMOTE_SERVER_PATH/latest_vid.mp4
 fi
+

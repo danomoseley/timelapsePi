@@ -3,7 +3,7 @@
 DIR=$(cd $(dirname $0); pwd -P)
 timestamp=$(date +"%y%m%d%H%M%S")
 date=$(date +"%y%m%d")
-destination="$DIR/archive/$date"
+destination="$DIR/archive/photo/$date"
 minute=$(date +"%-M")
 
 source $DIR/config.cfg
