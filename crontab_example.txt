@@ -1,0 +1,12 @@
+MAILTO=email@gmail.com
+
+0 0 * * * /home/pi/timelapsePi/schedule.sh
+0,15,30,45 5-21 * * * /home/pi/timelapsePi/backupArchive.sh
+
+# THESE JOBS ARE SET AUTOMATICALLY BY timelapsePi/schedule.sh
+#SUNRISE_COMMAND
+#RANGE_COMMAND
+#RANGE_HOURLY_TIMELAPSE_COMMAND
+#SUNSET_COMMAND
+#DAILY_TIMELAPSE_COMMAND
+# END AUTOMATICALLY SET SECTION
