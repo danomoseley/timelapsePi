@@ -12,7 +12,7 @@ destination="$DIR/archive/timelapse"
 temp_folder=/tmp/$date
 
 if [ ! -d $destination ]; then
-    mkdir $destination
+    mkdir -p $destination
 fi
 
 if [ ! -d $temp_folder ]; then

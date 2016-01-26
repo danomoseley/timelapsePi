@@ -10,7 +10,7 @@ source $DIR/config.cfg
 source $DIR/v4l2.cfg
 
 if [ ! -d $destination ]; then
-    mkdir $destination
+    mkdir -p $destination
 fi
 
 filename=$destination/$timestamp-ae3.jpg
