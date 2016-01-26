@@ -6,7 +6,7 @@ source $DIR/config.cfg
 date=$(date +"%y%m%d")
 date_hour=$(date +"%y%m%d%H")
 path="$DIR/archive/photo/$date"
-destination="$DIR/archive/timelapse/$date"
+destination="$DIR/archive/timelapse/hourly/$date"
 temp_folder=/tmp/$date_hour
 
 if [ ! -d $destination ]; then
