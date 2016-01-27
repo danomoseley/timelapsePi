@@ -5,7 +5,7 @@ die () {
     exit 1
 }
 
-[ "$#" -lt 1 ] || die "1 argument required, $# provided"
+[ "$#" -gt 0 ] || die "1 argument required, $# provided"
 
 DIR=$(cd $(dirname $0); pwd -P)
 source $DIR/config.cfg
@@ -18,12 +18,12 @@ timestamp=$(date +"%y%m%d%H%M%S")
 path="$DIR/archive/photo/$date"
 temp_folder=/tmp/$timestamp
 
-if [ $1 -eq "hourly" ]; then
+if [ $1 = "hourly" ]; then
     destination="$DIR/archive/timelapse/hourly/$date"
     date_hour=$(date +"%y%m%d%H")
     filename=$date_hour.mp4
     minutes=60
-elif [$1 -eq "daily" ]
+elif [ $1 = "daily" ]; then
     destination="$DIR/archive/timelapse"
     filename=$date.mp4
     minutes=720
@@ -45,7 +45,6 @@ find $path/*-ae3.jpg -mmin -$minutes -type f | while read f; do
     ln -sf "$f" "$temp_folder/$padded_i.jpg"
     i=$((i+1))
 done
-
 
 ERROR="$(mencoder mf://$temp_folder/*.jpg -nosound -o /tmp/$filename -vf scale=480:-10,harddup -lavfopts format=mp4 -faacopts mpeg=4:object=2:raw:br=128 -oac faac -ovc x264 -sws 9 -x264encopts nocabac:level_idc=30:bframes=0:global_header:threads=auto:subq=5:frameref=6:partitions=all:trellis=1:chroma_me:me=umh:bitrate=500 -of lavf -mf fps=12 2>&1 > /dev/null)"
 OUT=$?
