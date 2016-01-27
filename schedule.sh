@@ -4,8 +4,8 @@ DIR=$(cd $(dirname $0); pwd -P)
 source $DIR/config.cfg
 
 command="$DIR/takePic.sh"
-daily_timelapse_command="$DIR/makeDailyVideo.sh"
-hourly_timelapse_command="$DIR/makeHourlyVideo.sh"
+daily_timelapse_command="$DIR/makeTimelapse.sh daily"
+hourly_timelapse_command="$DIR/makeTimelapse.sh hourly"
 
 result=$(curl -s http://weather.yahooapis.com/forecastrss?w=$YAHOO_WEATHER_ID|grep astronomy| awk -F\" '{print $2 " " $4;}')
 
