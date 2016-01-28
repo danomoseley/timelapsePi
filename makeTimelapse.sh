@@ -40,7 +40,7 @@ if [ ! -d $temp_folder ]; then
 fi
 
 i=0
-find $path/*-ae3.jpg -mmin -$minutes -type f | while read f; do
+find $path/*.jpg -mmin -$minutes -type f | while read f; do
     padded_i=`printf %05d $i`
     ln -sf "$f" "$temp_folder/$padded_i.jpg"
     i=$((i+1))

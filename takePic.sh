@@ -1,7 +1,7 @@
 #!/bin/bash
 
 DIR=$(cd $(dirname $0); pwd -P)
-timestamp=$(date +"%y%m%d%H%M%S")
+timestamp=$(date +"%y%m%d%H%M")
 date=$(date +"%y%m%d")
 destination="$DIR/archive/photo/$date"
 minute=$(date +"%-M")
@@ -13,7 +13,7 @@ if [ ! -d $destination ]; then
     mkdir -p $destination
 fi
 
-filename=$destination/$timestamp-ae3.jpg
+filename=$destination/$timestamp.jpg
 ERROR="$(ffmpeg -f video4linux2 -s $RESOLUTION -i /dev/video0 -ss 0:0:5 -frames 1 $filename 2>&1 > /dev/null)"
 
 OUT=$?
