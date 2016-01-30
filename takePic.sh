@@ -21,7 +21,7 @@ if [ $OUT -ne 0 ]
 then
    rm $filename
 
-   echo $ERROR | mutt -e "set content_type=text/html" -e "set realname = \"$EMAIL_REAL_NAME\"" -e "set smtp_url = \"$SMTP_URL\"" -e "set smtp_pass = \"$SMTP_PASS\"" -e "set from = \"$FROM_EMAIL\"" -s "$EMAIL_SUBJECT" -- $TO_EMAIL
+   echo $ERROR
    if [[ "$ERROR" == *"Input/output error" ]] || [[ "$ERROR" == *"Device or resource busy" ]]
    then
       # Root cron runs script every minute which looks for /tmp/reboot.now
