@@ -12,8 +12,8 @@ result=$(curl -s http://weather.yahooapis.com/forecastrss?w=$YAHOO_WEATHER_ID|gr
 read sunrise sunrise_a sunset sunset_a <<<$(echo $result)
 
 IFS=':' read sunrise_hour sunrise_minute <<< "$sunrise"
-sunrise_minute=$(echo $sunrise_minute | sed 's/^0*//')
-sunrise_hour=$(echo $sunrise_hour | sed 's/^0*//')
+sunrise_hour=$((10#$sunrise_hour))
+sunrise_minute=$((10#$sunrise_minute))
 sunrise_minute=$((sunrise_minute-SUNRISE_SUNSET_BUFFER_MINUTES))
 if ((sunrise_minute < 0)); then
     sunrise_minute=$((60+sunrise_minute))
@@ -24,6 +24,7 @@ cron_hour_start=$((sunrise_hour+1))
 
 IFS=':' read sunset_hour sunset_minute <<< "$sunset"
 sunset_hour=$((sunset_hour+12))
+sunset_minute=$((10#$sunset_minute))
 sunset_minute=$((sunset_minute+SUNRISE_SUNSET_BUFFER_MINUTES))
 if ((sunset_minute > 59)); then
     sunset_minute=$((sunset_minute-60))
