@@ -19,11 +19,9 @@ failed_pics=0
 while [ $failed_pics -lt 5 ]; do
    ERROR_FILE=/tmp/ffmpeg${timestamp}
    { ffmpeg -f video4linux2 -s $RESOLUTION -i /dev/video0 -ss 0:0:5 -frames 1 $filename > $ERROR_FILE.log 2>&1 ; echo "$?" > $ERROR_FILE.response ; } &
-   pid=$!
    sleep 10
-   kill -9 $pid > /dev/null 2>&1
-   status=$?
-   if [ $status -eq 0 ]; then 
+   killall -q ffmpeg
+   if [ $? -eq 0 ]; then
       OUT=124
       ERROR=''
    else
