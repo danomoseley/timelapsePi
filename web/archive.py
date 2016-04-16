@@ -5,6 +5,10 @@ import datetime
 from flask import Flask, jsonify, send_file, abort, send_from_directory
 app = Flask(__name__)
 
+today=None
+sorted_files = None
+sorted_file_indexes = {}
+
 @app.route('/')
 def scroll():
    return app.send_static_file('infiniteScroll.html')
@@ -20,17 +24,23 @@ def send_img(path):
 @app.route("/getLatestPic")
 def getLatestPic():
    today=datetime.datetime.now().strftime('%y%m%d')
-   newest = max(glob.iglob('../../archive/photo/%s/*.jpg' % today), key=os.path.getctime)
+   global sorted_files
+   global sorted_file_indexes
+   sorted_files = sorted(glob.glob('../../archive/photo/%s/*.jpg' % today), key=os.path.getmtime)
+   i = 0
+   for file in sorted_files:
+      sorted_file_indexes[file] = i
+      i += 1
+   newest = sorted_files[-1]
    filename = os.path.basename(newest)
    return jsonify({'path':newest[2:],'date':int(filename[0:6]),'timestamp':int(filename[0:10])})
 
 @app.route("/getNextPic/<int:timestamp>", defaults={'interval': 1})
 @app.route('/getNextPic/<int:timestamp>/<int:interval>')
 def getNextPic(timestamp, interval):
-   sorted_files = sorted(glob.glob('../../archive/photo/%s/*.jpg' % str(timestamp)[0:6]), key=os.path.getmtime)
    timestamp_filename = '../../archive/photo/%s/%s.jpg' % (str(timestamp)[0:6], str(timestamp))
    if timestamp_filename in sorted_files:
-      timestamp_index = sorted_files.index(timestamp_filename)
+      timestamp_index = sorted_file_indexes[timestamp_filename]
       if len(sorted_files) > timestamp_index+interval and timestamp_index > 0:
          previous_pic_path = sorted_files[timestamp_index+interval]
          previous_pic_filename = os.path.basename(previous_pic_path)
