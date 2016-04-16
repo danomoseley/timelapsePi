@@ -1,6 +1,7 @@
 date=parseInt(moment().format('YYMMDD'));
 timestamp=parseInt(moment().format('YYMMDDHHmm'));
 continuous=false;
+sorted_files=[];
 
 function pad(num, size) {
     var s = num+"";
@@ -28,45 +29,46 @@ $(document).ready(function() {
    });
    window.addEventListener('mousewheel', function(e){
       if (e.wheelDelta > 0) {
-         getNextPic();
+         loadNextPic();
       } else {
-         getPreviousPic();
+         loadPreviousPic();
       }
    });
-   getCurentPic();
+   getPics();
 });
 
-function getCurentPic() {
-   $.getJSON( "/getLatestPic", function( data ) {
-      date = data['date'];
-      timestamp = data['timestamp'];
-      loadPic();
+function getPics() {
+   $.getJSON( "/getPics/"+date, function(data) {
+      sorted_files = data['sorted_files'];
+      current_index = sorted_files.length-1;
+      loadCurentPic();
    });
 }
 
-function getNextPic() {
-   $.getJSON( "/getNextPic/"+timestamp, function( data ) {
-      date = data['date'];
-      timestamp = data['timestamp'];
-      loadPic(getNextPic);
-   });
+function loadCurentPic() {
+   loadPic(current_index);
 }
 
-function getPreviousPic() {
-   $.getJSON( "/getPreviousPic/"+timestamp, function( data ) {
-      date = data['date'];
-      timestamp = data['timestamp'];
-      loadPic(getPreviousPic);
-   });
+function loadNextPic() {
+   if (current_index < sorted_files.length-1) {
+      current_index = current_index + 1;
+      loadPic(current_index);
+   }
 }
 
-function loadPic(fun) {
-   imgPath='/archive/photo/'+date+'/'+timestamp+'.jpg'
+function loadPreviousPic() {
+   if (current_index > 0) {
+      current_index = current_index - 1;
+      loadPic(current_index);
+   }
+}
+
+function loadPic(i) {
+   imgPath = '/archive/photo/'+date+'/'+sorted_files[i]
    $('<img src="'+ imgPath +'">').load(function() {
-      $('#container img').remove();
-      $(this).appendTo('#container');
-      if (continuous && fun) {
-         fun();
+      if (i == current_index) {
+         $('#container img').remove();
+         $(this).appendTo('#container');
       }
    });
 }
