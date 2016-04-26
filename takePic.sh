@@ -26,9 +26,18 @@ while [ $failed_pics -lt 5 ]; do
       OUT=124
       ERROR=''
    else
-      OUT=`cat $ERROR_FILE.response`
-      ERROR=`cat $ERROR_FILE.log`
-      rm $ERROR_FILE.log $ERROR_FILE.response
+      if [ -f "$ERROR_FILE.response" ]; then
+         OUT=`cat $ERROR_FILE.response`
+         rm $ERROR_FILE.response
+      else
+         OUT=999
+      fi
+      if [ -f "$ERROR_FILE.log" ]; then
+         ERROR=`cat $ERROR_FILE.log`
+         rm $ERROR_FILE.log
+      else
+         ERROR='Error file not found'
+      fi
    fi
 
    if [ $OUT -ne 0 ]; then
