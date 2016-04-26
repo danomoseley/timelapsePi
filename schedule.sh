@@ -12,8 +12,8 @@ result=$(curl -s $url)
 sunrise=$(echo $result | grep -Po 'sunrise="\K[0-9:]*')
 sunset=$(echo $result | grep -Po 'sunset="\K[0-9:]*')
 
-echo "Sunrise: $sunrise"
-echo "Sunset: $sunset"
+echo "Sunrise: ${sunrise}am"
+echo "Sunset: ${sunset}pm"
 
 IFS=':' read sunrise_hour sunrise_minute <<< "$sunrise"
 sunrise_hour=$((10#$sunrise_hour))
