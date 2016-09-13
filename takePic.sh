@@ -58,10 +58,10 @@ while [ $failed_pics -lt 5 ]; do
 
       if [ $OUT -eq 124 ]; then
          # echo "Capture timed out"
-         pass
+         :
       elif [[ "$ERROR" == *"Device or resource busy" ]]; then
          # echo "Device or resource busy"
-         pass
+         :
       elif [[ "$ERROR" == *"Input/output error" ]]; then
          reboot $OUT
       else
