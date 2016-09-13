@@ -6,8 +6,19 @@ date=$(date +"%y%m%d")
 destination="$DIR/archive/photo/$date"
 minute=$(date +"%-M")
 
+reboot () {
+   # Root cron runs script every minute which looks for /tmp/reboot.now
+   # If file is found, system is rebooted
+   echo "Input/output error, rebooting"
+   echo REBOOT > /tmp/reboot.now
+   exit $1
+}
+
 source $DIR/config.cfg
-source $DIR/v4l2.cfg
+v4l2-ctl --set-ctrl=${V4L2_CTRL_CONFIG}
+if [ $? -ne 0 ]; then
+    reboot 1
+fi
 
 if [ ! -d $destination ]; then
     mkdir -p $destination
@@ -52,11 +63,7 @@ while [ $failed_pics -lt 5 ]; do
          # echo "Device or resource busy"
          pass
       elif [[ "$ERROR" == *"Input/output error" ]]; then
-         # Root cron runs script every minute which looks for /tmp/reboot.now
-         # If file is found, system is rebooted
-         echo "Input/output error, rebooting"
-         echo REBOOT > /tmp/reboot.now
-         exit $OUT
+         reboot $OUT
       else
          echo $ERROR
       fi
