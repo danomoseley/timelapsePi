@@ -46,15 +46,17 @@ while [ $failed_pics -lt 5 ]; do
       fi
 
       if [ $OUT -eq 124 ]; then
-         echo "Capture timed out"
+         # echo "Capture timed out"
+         pass
+      elif [[ "$ERROR" == *"Device or resource busy" ]]; then
+         # echo "Device or resource busy"
+         pass
       elif [[ "$ERROR" == *"Input/output error" ]]; then
          # Root cron runs script every minute which looks for /tmp/reboot.now
          # If file is found, system is rebooted
          echo "Input/output error, rebooting"
          echo REBOOT > /tmp/reboot.now
          exit $OUT
-      elif [[ "$ERROR" == *"Device or resource busy" ]]; then
-         echo "Device or resource busy"
       else
          echo $ERROR
       fi
