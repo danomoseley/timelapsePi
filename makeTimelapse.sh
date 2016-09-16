@@ -46,7 +46,7 @@ find $path/*.jpg -mmin -$minutes -type f | while read f; do
     i=$((i+1))
 done
 
-ERROR="$(mencoder mf://$temp_folder/*.jpg -nosound -o /tmp/$filename -vf scale=480:-10,harddup -lavfopts format=mp4 -faacopts mpeg=4:object=2:raw:br=128 -oac faac -ovc x264 -sws 9 -x264encopts nocabac:level_idc=30:bframes=0:global_header:threads=auto:subq=5:frameref=6:partitions=all:trellis=1:chroma_me:me=umh:bitrate=500 -of lavf -mf fps=12 2>&1 > /dev/null)"
+ERROR="$(nice -n 19 mencoder mf://$temp_folder/*.jpg -nosound -o /tmp/$filename -vf scale=480:-10,harddup -lavfopts format=mp4 -faacopts mpeg=4:object=2:raw:br=128 -oac faac -ovc x264 -sws 9 -x264encopts nocabac:level_idc=30:bframes=0:global_header:threads=auto:subq=5:frameref=6:partitions=all:trellis=1:chroma_me:me=umh:bitrate=500 -of lavf -mf fps=12 2>&1 > /dev/null)"
 OUT=$?
 
 rm -R $temp_folder
