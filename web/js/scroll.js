@@ -19,7 +19,7 @@ $(document).ready(function() {
 });
 
 function getPics() {
-   $.getJSON( "/getPics/"+date, function(data) {
+   $.getJSON( "/live/getPics/"+date, function(data) {
       sorted_files = data['sorted_files'];
       current_index = sorted_files.length-1;
       loadCurentPic();
