@@ -122,7 +122,7 @@ while [ $failed_pics -lt 3 ]; do
                 exposure_absolute=$(($exposure_absolute+1))
                 sed -i "s/\(EXPOSURE_ABSOLUTE *= *\).*/\1$exposure_absolute/" $DIR/config.cfg
             fi
-            printf "Target brightness: ${TARGET_BRIGHTNESS}\nMax brightness: ${max_brightness}\nMin brightness: ${min_brightness}\nImage brightness: ${img_brightness}\nExposure setting: ${exposure_absolute}\nPrevious exposure: ${previous_exposure_absolute}"
+            printf "Image brightness: ${img_brightness}\nExposure setting: ${exposure_absolute}\nPrevious exposure: ${previous_exposure_absolute}\nTarget brightness: ${TARGET_BRIGHTNESS}\nMax brightness: ${max_brightness}\nMin brightness: ${min_brightness}"
 
             v4l2-ctl -l > $destination/$timestamp.txt
             /home/pi/.local/bin/aws s3 cp --quiet $filename s3://camp.danomoseley.com/latest_pic.jpg --expires "$(date -d '+1 minute' --utc +'%Y-%m-%dT%H:%M:%SZ')"
