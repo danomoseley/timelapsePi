@@ -112,15 +112,17 @@ while [ $failed_pics -lt 3 ]; do
       else
 	 img_brightness=$(convert "$filename" -colorspace gray -format "%[fx:100*mean]" info:)
 	 img_brightness=$(printf "%.0f" "$img_brightness")
+	 min_brightness=$(($TARGET_BRIGHTNESS-5))
+	 max_brightness=$(($TARGET_BRIGHTNESS+5))
 	 previous_exposure_absolute=$exposure_absolute
-	 if [ $img_brightness -ge 32 ] && [ $exposure_absolute -ge 4 ]; then
+	 if [ $img_brightness -ge $max_brightness ] && [ $exposure_absolute -ge 4 ]; then
 	    exposure_absolute=$(($exposure_absolute-1))
             sed -i "s/\(EXPOSURE_ABSOLUTE *= *\).*/\1$exposure_absolute/" $DIR/config.cfg
-         elif [ $img_brightness -le 28 ] && [ $exposure_absolute -le 30 ]; then
+    elif [ $img_brightness -le $min_brightness ] && [ $exposure_absolute -le 30 ]; then
 	    exposure_absolute=$(($exposure_absolute+1))
             sed -i "s/\(EXPOSURE_ABSOLUTE *= *\).*/\1$exposure_absolute/" $DIR/config.cfg
          fi
-	 printf "Image brightness: ${img_brightness}\nExposure setting: ${exposure_absolute}\nPrevious exposure: ${previous_exposure_absolute}"
+	 printf "Target brightness: ${TARGET_BRIGHTNESS}\nMax brightness: ${max_brightness}\nMin brightness: ${min_brightness}\nImage brightness: ${img_brightness}\nExposure setting: ${exposure_absolute}\nPrevious exposure: ${previous_exposure_absolute}"
 
          v4l2-ctl -l > $destination/$timestamp.txt
 	 /home/pi/.local/bin/aws s3 cp --quiet $filename s3://camp.danomoseley.com/latest_pic.jpg --expires "$(date -d '+1 minute' --utc +'%Y-%m-%dT%H:%M:%SZ')"
