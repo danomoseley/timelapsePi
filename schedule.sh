@@ -75,3 +75,5 @@ expires_sunrise=$(date -d "$tomorrow $sunrise_hour:$sunrise_minute $timezone" --
 
 echo "$cron" | crontab -
 
+source $DIR/weather.sh
+
