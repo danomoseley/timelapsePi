@@ -4,13 +4,22 @@ DIR=$(cd $(dirname $0); pwd -P)
 source $DIR/config.cfg
 
 command="$DIR/takePic.sh"
+schedule_command="$DIR/schedule.sh"
 daily_timelapse_command="$DIR/makeTimelapse.sh daily"
 hourly_timelapse_command="$DIR/makeTimelapse.sh hourly"
 
-url="https://query.yahooapis.com/v1/public/yql?q=select%20astronomy.sunrise%2C%20astronomy.sunset%20from%20weather.forecast%20where%20woeid%20in%20(select%20woeid%20from%20geo.places(1)%20where%20text%3D%22${YAHOO_WEATHER_CITY}%2C%20${YAHOO_WEATHER_STATE}%22)&format=xml&env=store%3A%2F%2Fdatatables.org%2Falltableswithkeys"
+tomorrow=$(date --date='tomorrow' +"%Y-%m-%d")
+
+url="https://api.sunrise-sunset.org/json?date=$tomorrow&lat=$SUNRISE_SUNSET_LATITUDE&lng=$SUNRISE_SUNSET_LONGITUDE"
 result=$(curl -s $url)
-sunrise=$(echo $result | grep -Po 'sunrise="\K[0-9:]*')
-sunset=$(echo $result | grep -Po 'sunset="\K[0-9:]*')
+
+sunrise=$(echo $result | jq '.results.sunrise')
+sunrise=${sunrise:1:-1}
+sunrise=$(date -d "$sunrise UTC" +%-I:%M)
+
+sunset=$(echo $result | jq '.results.sunset')
+sunset=${sunset:1:-1}
+sunset=$(date -d "$sunset UTC" +%-I:%M)
 
 echo "Sunrise: ${sunrise}am"
 echo "Sunset: ${sunset}pm"
@@ -49,13 +58,20 @@ range_cron="* $cron_hour_start-$cron_hour_end * * * $command #RANGE_COMMAND"
 sunset_cron="0-$sunset_minute $sunset_hour * * * $command $sunset_minute #SUNSET_COMMAND"
 daily_timelapse_cron="$daily_timelapse_minute $daily_timelapse_hour * * * $daily_timelapse_command #DAILY_TIMELAPSE_COMMAND"
 hourly_timelapse_cron="0 $cron_hour_start-$sunset_hour * * * $hourly_timelapse_command #RANGE_HOURLY_TIMELAPSE_COMMAND"
+schedule_cron="$daily_timelapse_minute $daily_timelapse_hour * * * $schedule_command #SCHEDULE_COMMAND"
 
 cron=$(crontab -l)
 cron=$(sed "s,.*#SUNRISE_COMMAND$,$sunrise_cron,g" <<< "$cron")
 cron=$(sed "s,.*#RANGE_COMMAND$,$range_cron,g" <<< "$cron")
-cron=$(sed "s,.*#RANGE_HOURLY_TIMELAPSE_COMMAND$,$hourly_timelapse_cron,g" <<< "$cron")
+#cron=$(sed "s,.*#RANGE_HOURLY_TIMELAPSE_COMMAND$,$hourly_timelapse_cron,g" <<< "$cron")
 cron=$(sed "s,.*#SUNSET_COMMAND$,$sunset_cron,g" <<< "$cron")
-cron=$(sed "s,.*#DAILY_TIMELAPSE_COMMAND,$daily_timelapse_cron,g" <<< "$cron")
+#cron=$(sed "s,.*#DAILY_TIMELAPSE_COMMAND,$daily_timelapse_cron,g" <<< "$cron")
+cron=$(sed "s,.*#SCHEDULE_COMMAND$,$schedule_cron,g" <<< "$cron")
+
+timezone=$(date +%Z)
+expires_sunrise=$(date -d "$tomorrow $sunrise_hour:$sunrise_minute $timezone" --utc +'%Y-%m-%dT%H:%M:%SZ')
+
+/home/pi/.local/bin/aws s3 cp --quiet "$DIR/black.jpg" s3://camp.danomoseley.com/latest_pic.jpg --expires "$expires_sunrise"
 
 echo "$cron" | crontab -
-#echo "$cron"
+
