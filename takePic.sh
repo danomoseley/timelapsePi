@@ -65,11 +65,11 @@ fi
 filename=$destination/$timestamp.jpg
 
 failed_pics=0
-while [ $failed_pics -lt 5 ]; do
+while [ $failed_pics -lt 3 ]; do
    ERROR_FILE=/tmp/ffmpeg${timestamp}
-   delay_seconds=$(( 5 + $failed_pics ))
+   delay_seconds=$(( 10 + $failed_pics ))
    { ffmpeg -y -f video4linux2 -s $RESOLUTION -i /dev/video0 -ss 0:0:${delay_seconds} -frames 1 $filename > $ERROR_FILE.log 2>&1 ; echo "$?" > $ERROR_FILE.response ; } &
-   sleep 10
+   sleep 15
    killall -q ffmpeg
    if [ $? -eq 0 ]; then
       OUT=124
