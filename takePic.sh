@@ -14,8 +14,46 @@ reboot () {
    exit $1
 }
 
+floatToInt() {
+   printf "%.0f\n" "$@"
+}
 source $DIR/config.cfg
-v4l2-ctl --set-ctrl=${V4L2_CTRL_CONFIG}
+v4l2-ctl -d /dev/video0 --set-ctrl="focus_auto=0"
+v4l2-ctl -d /dev/video0 --set-ctrl="focus_absolute=5"
+v4l2-ctl -d /dev/video0 --set-ctrl="exposure_auto_priority=0"
+v4l2-ctl -d /dev/video0 --set-ctrl="exposure_auto=1"
+#v4l2-ctl -d /dev/video0 --set-ctrl="exposure_absolute=11"
+# Lowered 12/8/18 from 11 to 6 for snow and clouds
+# Lowered 2/27/19 from 5 to 4 for bright snow and clouds
+# 3/14/20 set to 20 for overcast day
+exposure_absolute=$EXPOSURE_ABSOLUTE
+
+white_balance_temperature=4300
+
+while true; do
+   v4l2-ctl -d /dev/video0 --set-ctrl="exposure_absolute=$exposure_absolute"
+   val=$(v4l2-ctl -d /dev/video0 --get-ctrl="exposure_absolute" | awk '{ print $2 }')
+   if [[ $val -eq $exposure_absolute ]]; then
+       break
+   fi
+done
+v4l2-ctl -d /dev/video0 --set-ctrl="brightness=128"
+v4l2-ctl -d /dev/video0 --set-ctrl="contrast=128"
+v4l2-ctl -d /dev/video0 --set-ctrl="saturation=128"
+v4l2-ctl -d /dev/video0 --set-ctrl="white_balance_temperature_auto=0"
+#v4l2-ctl -d /dev/video0 --set-ctrl="white_balance_temperature=4911"
+
+while true; do
+   v4l2-ctl -d /dev/video0 --set-ctrl="white_balance_temperature=$white_balance_temperature"
+   val=$(v4l2-ctl -d /dev/video0 --get-ctrl="white_balance_temperature" | awk '{ print $2 }')
+   if [[ $val -eq $white_balance_temperature ]]; then
+       break
+   fi
+done
+v4l2-ctl -d /dev/video0 --set-ctrl="backlight_compensation=0"
+v4l2-ctl -d /dev/video0 --set-ctrl="sharpness=128"
+v4l2-ctl -d /dev/video0 --set-ctrl="gain=0"
+
 if [ $? -ne 0 ]; then
     reboot 1
 fi
@@ -72,9 +110,28 @@ while [ $failed_pics -lt 5 ]; do
       if [ $file_size -le $MINIMUM_FILE_SIZE ]; then
          rm $filename
       else
+	 img_brightness=$(convert "$filename" -colorspace gray -format "%[fx:100*mean]" info:)
+	 img_brightness=$(printf "%.0f" "$img_brightness")
+	 previous_exposure_absolute=$exposure_absolute
+	 if [ $img_brightness -ge 32 ] && [ $exposure_absolute -ge 4 ]; then
+	    exposure_absolute=$(($exposure_absolute-1))
+            sed -i "s/\(EXPOSURE_ABSOLUTE *= *\).*/\1$exposure_absolute/" $DIR/config.cfg
+         elif [ $img_brightness -le 28 ] && [ $exposure_absolute -le 30 ]; then
+	    exposure_absolute=$(($exposure_absolute+1))
+            sed -i "s/\(EXPOSURE_ABSOLUTE *= *\).*/\1$exposure_absolute/" $DIR/config.cfg
+         fi
+	 printf "Image brightness: ${img_brightness}\nExposure setting: ${exposure_absolute}\nPrevious exposure: ${previous_exposure_absolute}"
+
+         v4l2-ctl -l > $destination/$timestamp.txt
+	 /home/pi/.local/bin/aws s3 cp --quiet $filename s3://camp.danomoseley.com/latest_pic.jpg --expires "$(date -d '+1 minute' --utc +'%Y-%m-%dT%H:%M:%SZ')"
+         /home/pi/.local/bin/aws s3 cp --quiet $filename "s3://camp.danomoseley.com/archive/photo/$date/$timestamp.jpg"
+         disk_usage=$( df -h | grep '/dev/root' | awk {'print $5'} | sed 's/%//' )
+         if [ $disk_usage -ge 90 ]; then
+            echo "Disk space $disk_usage%"
+         fi
          if [[ $((10#$minute % $PIC_SYNC_INTERVAL)) -eq 0 || $1 -eq $minute ]]
          then
-            nice -n 19 scp -pr $filename $REMOTE_SERVER_HOST:$REMOTE_SERVER_PATH/latest_pic.jpg
+            #nice -n 19 scp -pr $filename $REMOTE_SERVER_HOST:$REMOTE_SERVER_PATH/latest_pic.jpg
             source $DIR/backupArchive.sh
          fi
          exit 0
