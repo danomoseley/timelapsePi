@@ -84,3 +84,4 @@ while [ $failed_pics -lt 5 ]; do
    sleep 5
 done
 echo "No valid pics after 5 attempts"
+reboot $OUT
