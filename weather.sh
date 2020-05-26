@@ -12,9 +12,9 @@ tomorrow_lower=$(echo "$tomorrow" | awk '{print tolower($0)}')
 echo $tomorrow
 
 if [[ "$tomorrow_lower" =~ .*"sunny".* ]]; then
-   exposure_absolute=4
+    exposure_absolute=4
 else
-   exposure_absolute=20
+    exposure_absolute=20
 fi
 
 sed -i "s/\(EXPOSURE_ABSOLUTE *= *\).*/\1$exposure_absolute/" $DIR/config.cfg
