@@ -19,7 +19,7 @@ floatToInt() {
 }
 source $DIR/config.cfg
 v4l2-ctl -d /dev/video0 --set-ctrl="focus_auto=0"
-v4l2-ctl -d /dev/video0 --set-ctrl="focus_absolute=5"
+v4l2-ctl -d /dev/video0 --set-ctrl="focus_absolute=0"
 v4l2-ctl -d /dev/video0 --set-ctrl="exposure_auto_priority=0"
 v4l2-ctl -d /dev/video0 --set-ctrl="exposure_auto=1"
 exposure_absolute=$EXPOSURE_ABSOLUTE
