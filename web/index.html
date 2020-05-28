@@ -6,9 +6,20 @@
       <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jquerymobile/1.4.5/jquery.mobile.min.css">
       <script src="https://ajax.googleapis.com/ajax/libs/jquerymobile/1.4.5/jquery.mobile.min.js"></script>
       <script src="js/moment.min.js"></script>
+      <script src="js/aws-sdk-2.627.0.min.js"></script>
       <script src="js/scroll.js"></script>
+      <style>.ui-page{ height:100%; }</style>
+      <!-- Global site tag (gtag.js) - Google Analytics -->
+      <script async src="https://www.googletagmanager.com/gtag/js?id=UA-15878927-10"></script>
+      <script>
+         window.dataLayer = window.dataLayer || [];
+         function gtag(){dataLayer.push(arguments);}
+         gtag('js', new Date());
+         gtag('config', 'UA-15878927-10');
+      </script>
    </head>
-   <body>
-      <div id="container"></div>
+   <body style="height:100%">
+      <select id="date"></select>
+      <div style="width:100%;height:100%;" id="container"></div>
    </body>
 </html>
