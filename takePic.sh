@@ -3,8 +3,8 @@
 DIR=$(cd $(dirname $0); pwd -P)
 timestamp=$(date +"%y%m%d%H%M")
 date=$(date +"%y%m%d")
-destination="$DIR/archive/photo/$date"
 minute=$(date +"%-M")
+destination="$DIR/archive/photo/$date"
 
 reboot () {
    # Root cron runs script every minute which looks for /tmp/reboot.now
@@ -22,12 +22,7 @@ v4l2-ctl -d /dev/video0 --set-ctrl="focus_auto=0"
 v4l2-ctl -d /dev/video0 --set-ctrl="focus_absolute=5"
 v4l2-ctl -d /dev/video0 --set-ctrl="exposure_auto_priority=0"
 v4l2-ctl -d /dev/video0 --set-ctrl="exposure_auto=1"
-#v4l2-ctl -d /dev/video0 --set-ctrl="exposure_absolute=11"
-# Lowered 12/8/18 from 11 to 6 for snow and clouds
-# Lowered 2/27/19 from 5 to 4 for bright snow and clouds
-# 3/14/20 set to 20 for overcast day
 exposure_absolute=$EXPOSURE_ABSOLUTE
-
 white_balance_temperature=4300
 
 while true; do
@@ -41,7 +36,6 @@ v4l2-ctl -d /dev/video0 --set-ctrl="brightness=128"
 v4l2-ctl -d /dev/video0 --set-ctrl="contrast=128"
 v4l2-ctl -d /dev/video0 --set-ctrl="saturation=128"
 v4l2-ctl -d /dev/video0 --set-ctrl="white_balance_temperature_auto=0"
-#v4l2-ctl -d /dev/video0 --set-ctrl="white_balance_temperature=4911"
 
 while true; do
     v4l2-ctl -d /dev/video0 --set-ctrl="white_balance_temperature=$white_balance_temperature"
