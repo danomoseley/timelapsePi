@@ -120,6 +120,8 @@ while [ $failed_pics -lt 3 ]; do
 
             v4l2-ctl -l > $destination/$timestamp.txt
             /home/pi/.local/bin/aws s3 cp --quiet $filename s3://camp.danomoseley.com/latest_pic.jpg --expires "$(date -d '+1 minute' --utc +'%Y-%m-%dT%H:%M:%SZ')"
+            convert "$filename" -thumbnail 600 - | /home/pi/.local/bin/aws s3 cp --quiet - s3://camp.danomoseley.com/latest_pic_thumb.jpg --expires "$(date -d '+1 minute' --utc +'%Y-%m-%dT%H:%M:%SZ')"
+
             /home/pi/.local/bin/aws s3 cp --quiet $filename "s3://camp.danomoseley.com/archive/photo/$date/$timestamp.jpg"
             disk_usage=$( df -h | grep '/dev/root' | awk {'print $5'} | sed 's/%//' )
             if [ $disk_usage -ge 90 ]; then
