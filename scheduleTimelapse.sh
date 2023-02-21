@@ -1,6 +1,7 @@
 #!/bin/bash
 
 DIR=$(cd $(dirname $0); pwd -P)
+source $DIR/config.cfg
 
 make_command="/usr/bin/screen -dmS make-timelapse ${DIR}/make.sh"
 
