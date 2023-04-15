@@ -1,9 +1,14 @@
 #!/bin/bash
 set -e
+umask 002
 
 libx264_preset="medium"
 # Lower CRF = higher quality, 17 should be effectively lossless and 23 is default
 libx264_crf="17"
+
+libx264_preset_web="medium"
+libx264_crf_web="28"
+
 snip_microseconds=89300
 
 dir=$(cd $(dirname $0); pwd -P)
@@ -18,9 +23,12 @@ if [ ! -d $tmp_dir ]; then
 fi
 
 processing_dir="$tmp_dir/output"
-if [ ! -d $processing_dir ]; then
-    mkdir $processing_dir
+if [ -d $processing_dir ]; then
+    echo "$processing_dir exists, already in progress? Exiting." | tee -a $log_file
+    exit
 fi
+
+mkdir $processing_dir
 
 trap "rm -Rf ${processing_dir}" EXIT
 
@@ -70,22 +78,28 @@ for f in $tmp_dir/*.h264; do echo "file '$f'" >> "$processing_dir/${date}-list.t
 shopt -u nullglob
 
 if [ ! -s "$processing_dir/${date}-list.txt" ]; then
-    echo "Nothing to do, exiting."
+    echo "Nothing to do, exiting." | tee -a $log_file
+    rm -Rf $tmp_dir
     exit
 fi
 
 tik=$SECONDS
 echo "Starting FFmpeg processing (preset: ${libx264_preset}, crf: ${libx264_crf})..." | tee -a $log_file
-nice -19 ffmpeg -loglevel error -y -r 25 -f concat -safe 0 -i $processing_dir/${date}-list.txt -filter_complex "[0:v]split=3[in1][in2][in3];[in1]setpts=PTS/60[out1];[in2]setpts=PTS/120[out2];[in3]setpts=PTS/240[out3]" -map "[out1]" -c:v libx264 -preset "$libx264_preset" -crf "$libx264_crf" -an -ss "${snip_microseconds}us" -f mp4 "${processing_dir}/${date}-60.mp4" -map "[out2]" -c:v libx264 -preset "$libx264_preset" -crf "$libx264_crf" -an -ss "$((snip_microseconds/2))us" -f mp4 "${processing_dir}/${date}-120.mp4" -map "[out3]" -c:v libx264 -preset "$libx264_preset" -crf "$libx264_crf" -an -ss "$((snip_microseconds/4))us" -f mp4 "${processing_dir}/${date}-240.mp4" | tee -a $log_file
+nice -19 ffmpeg -loglevel error -y -r 25 -f concat -safe 0 -i $processing_dir/${date}-list.txt -filter_complex "[0:v]split=6[in1][in2][in3][in4][in5][in6];[in1]setpts=PTS/60[out1];[in2]setpts=PTS/120[out2];[in3]setpts=PTS/240[out3];[in4]setpts=PTS/60[out4];[in5]setpts=PTS/240[out5];[in6]setpts=PTS/960[out6]" -map "[out1]" -c:v libx264 -preset "$libx264_preset" -crf "$libx264_crf" -an -ss "${snip_microseconds}us" -f mp4 "${processing_dir}/${date}-60.mp4" -map "[out2]" -c:v libx264 -preset "$libx264_preset" -crf "$libx264_crf" -an -ss "$((snip_microseconds/2))us" -f mp4 "${processing_dir}/${date}-120.mp4" -map "[out3]" -c:v libx264 -preset "$libx264_preset" -crf "$libx264_crf" -an -ss "$((snip_microseconds/4))us" -f mp4 "${processing_dir}/${date}-240.mp4" -map "[out4]" -c:v libx264 -preset "$libx264_preset_web" -crf "$libx264_crf_web" -an -ss "$((snip_microseconds))us" -f mp4 "${processing_dir}/${date}-60-web.mp4" -map "[out5]" -c:v libx264 -preset "$libx264_preset_web" -crf "$libx264_crf_web" -an -ss "$((snip_microseconds/4))us" -f mp4 "${processing_dir}/${date}-240-web.mp4" -map "[out6]" -c:v libx264 -preset "$libx264_preset_web" -crf "$libx264_crf_web" -an -ss "$((snip_microseconds/16))us" -f mp4 "${processing_dir}/${date}-960-web.mp4" | tee -a $log_file
 print_stats $tik "FFmpeg"
 
 append_new_video "60"
 append_new_video "120"
 append_new_video "240"
+append_new_video "60-web"
+append_new_video "240-web"
+append_new_video "960-web"
 
 nice -19 ffmpeg -loglevel error -y -r 25 -sseof -10 -i "${processing_dir}/${date}-60.mp4" -c copy "${processing_dir}/latest-clip-60.mp4" | tee -a $log_file
 nice -19 ffmpeg -loglevel error -y -r 25 -sseof -10 -i "${processing_dir}/${date}-120.mp4" -c copy "${processing_dir}/latest-clip-120.mp4" | tee -a $log_file
 nice -19 ffmpeg -loglevel error -y -r 25 -sseof -10 -i "${processing_dir}/${date}-240.mp4" -c copy "${processing_dir}/latest-clip-240.mp4" | tee -a $log_file
+nice -19 ffmpeg -loglevel error -y -r 25 -sseof -10 -i "${processing_dir}/${date}-60-web.mp4" -c copy "${processing_dir}/latest-clip-60-web.mp4" | tee -a $log_file
+nice -19 ffmpeg -loglevel error -y -r 25 -sseof -10 -i "${processing_dir}/${date}-240-web.mp4" -c copy "${processing_dir}/latest-clip-240-web.mp4" | tee -a $log_file
 
 mv $processing_dir/*.mp4 $dir
 
@@ -93,9 +107,13 @@ trap - EXIT
 
 rm -Rf $tmp_dir
 
-ln -sf "${dir}/${date}-60.mp4" "latest-60.mp4"
-ln -sf "${dir}/${date}-120.mp4" "latest-120.mp4"
-ln -sf "${dir}/${date}-240.mp4" "latest-240.mp4"
-ln -sf "$log_file" "latest-output.txt"
+ln -sf "${dir}/${date}-60.mp4" "${dir}/latest-60.mp4"
+ln -sf "${dir}/${date}-120.mp4" "${dir}/latest-120.mp4"
+ln -sf "${dir}/${date}-240.mp4" "${dir}/latest-240.mp4"
+ln -sf "${dir}/${date}-60-web.mp4" "${dir}/latest-60-web.mp4"
+ln -sf "${dir}/${date}-240-web.mp4" "${dir}/latest-240-web.mp4"
+ln -sf "${dir}/${date}-960-web.mp4" "${dir}/latest-960-web.mp4"
+ln -sf "$log_file" "${dir}/latest-output.txt"
 
 print_stats $start "Total processing"
+
