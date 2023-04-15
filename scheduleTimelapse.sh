@@ -4,6 +4,7 @@ DIR=$(cd $(dirname $0); pwd -P)
 source $DIR/config.cfg
 
 make_command="/usr/bin/screen -dmS make-timelapse ${DIR}/make.sh"
+SUNSET_EXTRA_BUFFER_MINUTES=${SUNSET_EXTRA_BUFFER_MINUTES:-0}
 
 tomorrow=$(date --date='tomorrow' +"%Y-%m-%d")
 
@@ -34,11 +35,8 @@ fi
 IFS=':' read sunset_hour sunset_minute <<< "$sunset"
 sunset_hour=$((sunset_hour+12))
 sunset_minute=$((10#$sunset_minute))
-echo $sunset_minute
 sunset_minute=$((sunset_minute+SUNRISE_SUNSET_BUFFER_MINUTES+SUNSET_EXTRA_BUFFER_MINUTES))
-echo $sunset_minute
 sunset_minute=$(echo "($sunset_minute + 9) / 10 * 10" | bc)
-echo $sunset_minute
 if ((sunset_minute > 59)); then
     sunset_minute=$((sunset_minute-60))
     sunset_hour=$((sunset_hour+1))
@@ -50,10 +48,15 @@ cron_hour_end=$((sunset_hour-1))
 sunrise_cron="$sunrise_minute-59/10 $sunrise_hour * * * $make_command #SUNRISE_COMMAND"
 sunset_cron="0-$sunset_minute/10 $sunset_hour * * * $make_command #SUNSET_COMMAND"
 range_cron="*/10 $cron_hour_start-$cron_hour_end * * * $make_command #RANGE_COMMAND"
+web_expires_sunrise_cron="$sunrise_minute $sunrise_hour * * * echo 'expires modified +10m;' > ${DIR}/web_expires_directive.txt \&\& sudo /usr/sbin/service nginx reload #WEB_EXPIRES_SUNRISE_COMMAND"
+web_expires_sunset_cron="$sunset_minute $sunset_hour * * * echo 'expires @${sunrise_hour}h${sunrise_minute}m;' > ${DIR}/web_expires_directive.txt \&\& sudo /usr/sbin/service nginx reload #WEB_EXPIRES_SUNSET_COMMAND"
 
 cron=$(crontab -l)
 cron=$(sed "s,.*#SUNRISE_COMMAND$,$sunrise_cron,g" <<< "$cron")
 cron=$(sed "s,.*#RANGE_COMMAND$,$range_cron,g" <<< "$cron")
 cron=$(sed "s,.*#SUNSET_COMMAND$,$sunset_cron,g" <<< "$cron")
+cron=$(sed "s,.*#WEB_EXPIRES_SUNRISE_COMMAND$,$web_expires_sunrise_cron,g" <<< "$cron")
+cron=$(sed "s,.*#WEB_EXPIRES_SUNSET_COMMAND$,$web_expires_sunset_cron,g" <<< "$cron")
 
 echo "$cron" | crontab -
+
