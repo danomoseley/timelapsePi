@@ -7,7 +7,7 @@ libx264_preset="medium"
 libx264_crf="17"
 
 libx264_preset_web="medium"
-libx264_crf_web="28"
+libx264_crf_web="23"
 
 snip_microseconds=89300
 
@@ -129,9 +129,10 @@ success=$(jq -r '.success' <<<"$response")
 echo "KV success: ${success}" | tee -a $log_file
 
 if [ -f "${dir}/latest_timelapse_video_id.txt" ]; then
-    latest_clip_video_id=$(cat $dir/latest_timelapse_video_id.txt)
+    previous_timelapse_video_id=$(cat "${dir}/latest_timelapse_video_id.txt")
+    echo $previous_timelapse_video_id
     echo "Deleting previous timelapse video" | tee -a $log_file
-    response=$(curl --request DELETE --url https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream/${latest_clip_video_id} --header 'Content-Type: application/json' --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}")
+    response=$(curl --request DELETE --url https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream/${previous_timelapse_video_id} --header 'Content-Type: application/json' --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}")
     success=$(jq -r '.success' <<<"$response")
     echo "Success: ${success}" | tee -a $log_file
 fi
@@ -150,9 +151,9 @@ if [ $# -eq 0 ]; then
     echo "KV success: ${success}" | tee -a $log_file
 
     if [ -f "${dir}/latest_clip_video_id.txt" ]; then
-        latest_clip_video_id=$(cat $dir/latest_clip_video_id.txt)
+        previous_clip_video_id=$(cat "${dir}/latest_clip_video_id.txt")
         echo "Deleting previous video clip" | tee -a $log_file
-        response=$(curl --request DELETE --url https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream/${latest_clip_video_id} --header 'Content-Type: application/json' --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}")
+        response=$(curl --request DELETE --url https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream/${previous_clip_video_id} --header 'Content-Type: application/json' --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}")
         success=$(jq -r '.success' <<<"$response")
         echo "Success: ${success}" | tee -a $log_file
     fi
@@ -161,7 +162,7 @@ if [ $# -eq 0 ]; then
 else
     echo "Swapping clip for full timelapse for end of day" | tee -a $log_file
     if [ -f "${dir}/latest_timelapse_video_id.txt" ]; then
-        video_id=$(cat $dir/latest_timelapse_video_id.txt)
+        video_id=$(cat "${dir}/latest_timelapse_video_id.txt")
 
         response=$(curl --request PUT --url https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/storage/kv/namespaces/${CLOUDFLARE_KV_NAMESPACE_ID}/values/${TIMELAPSE_IDENTIFIER}-latest-video-clip-id --header 'Content-Type: multipart/form-data' --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}" --form metadata={} --form value=$video_id)
 
@@ -169,13 +170,13 @@ else
         echo "KV success: ${success}" | tee -a $log_file
 
         if [ -f "${dir}/latest_clip_video_id.txt" ]; then
-            latest_clip_video_id=$(cat $dir/latest_clip_video_id.txt)
+            latest_clip_video_id=$(cat "${dir}/latest_clip_video_id.txt")
 
             echo "Deleting previous video clip" | tee -a $log_file
             response=$(curl --request DELETE --url https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream/${latest_clip_video_id} --header 'Content-Type: application/json' --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}")
             success=$(jq -r '.success' <<<"$response")
             echo "Success: ${success}" | tee -a $log_file
-            rm $dir/latest_clip_video_id.txt
+            rm "${dir}/latest_clip_video_id.txt"
         fi
     fi
 fi
