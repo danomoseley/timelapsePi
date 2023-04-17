@@ -149,7 +149,7 @@ if [ $# -eq 0 ]; then
 
     echo "Latest clip video id ${video_id}" | tee -a $log_file
 
-    response=$(curl --request PUT --url https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/storage/kv/namespaces/${CLOUDFLARE_KV_NAMESPACE_ID}/values/${TIMELAPSE_IDENTIFIER}-latest-video-clip-id --header 'Content-Type: multipart/form-data' --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}" --form metadata={} --form value=$video_id)
+    response=$(curl --request PUT --url https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/storage/kv/namespaces/${CLOUDFLARE_KV_NAMESPACE_ID}/values/${TIMELAPSE_IDENTIFIER}-latest-clip-video-id --header 'Content-Type: multipart/form-data' --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}" --form metadata={} --form value=$video_id)
 
     success=$(jq -r '.success' <<<"$response")
     echo "KV success: ${success}" | tee -a $log_file
@@ -173,7 +173,7 @@ else
     if [ -f "${dir}/latest_timelapse_video_id.txt" ]; then
         video_id=$(cat "${dir}/latest_timelapse_video_id.txt")
 
-        response=$(curl --request PUT --url https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/storage/kv/namespaces/${CLOUDFLARE_KV_NAMESPACE_ID}/values/${TIMELAPSE_IDENTIFIER}-latest-video-clip-id --header 'Content-Type: multipart/form-data' --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}" --form metadata={} --form value=$video_id)
+        response=$(curl --request PUT --url https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/storage/kv/namespaces/${CLOUDFLARE_KV_NAMESPACE_ID}/values/${TIMELAPSE_IDENTIFIER}-latest-clip-video-id --header 'Content-Type: multipart/form-data' --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}" --form metadata={} --form value=$video_id)
 
         success=$(jq -r '.success' <<<"$response")
         echo "KV success: ${success}" | tee -a $log_file
