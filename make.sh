@@ -12,6 +12,8 @@ libx264_crf_web="28"
 snip_microseconds=89300
 
 dir=$(cd $(dirname $0); pwd -P)
+source $dir/config.cfg
+
 start=$SECONDS
 
 date=$(date '+%y%m%d')
@@ -85,21 +87,19 @@ fi
 
 tik=$SECONDS
 echo "Starting FFmpeg processing (preset: ${libx264_preset}, crf: ${libx264_crf})..." | tee -a $log_file
-nice -19 ffmpeg -loglevel error -y -r 25 -f concat -safe 0 -i $processing_dir/${date}-list.txt -filter_complex "[0:v]split=6[in1][in2][in3][in4][in5][in6];[in1]setpts=PTS/60[out1];[in2]setpts=PTS/120[out2];[in3]setpts=PTS/240[out3];[in4]setpts=PTS/60[out4];[in5]setpts=PTS/240[out5];[in6]setpts=PTS/960[out6]" -map "[out1]" -c:v libx264 -preset "$libx264_preset" -crf "$libx264_crf" -an -ss "${snip_microseconds}us" -f mp4 "${processing_dir}/${date}-60.mp4" -map "[out2]" -c:v libx264 -preset "$libx264_preset" -crf "$libx264_crf" -an -ss "$((snip_microseconds/2))us" -f mp4 "${processing_dir}/${date}-120.mp4" -map "[out3]" -c:v libx264 -preset "$libx264_preset" -crf "$libx264_crf" -an -ss "$((snip_microseconds/4))us" -f mp4 "${processing_dir}/${date}-240.mp4" -map "[out4]" -c:v libx264 -preset "$libx264_preset_web" -crf "$libx264_crf_web" -an -ss "$((snip_microseconds))us" -f mp4 "${processing_dir}/${date}-60-web.mp4" -map "[out5]" -c:v libx264 -preset "$libx264_preset_web" -crf "$libx264_crf_web" -an -ss "$((snip_microseconds/4))us" -f mp4 "${processing_dir}/${date}-240-web.mp4" -map "[out6]" -c:v libx264 -preset "$libx264_preset_web" -crf "$libx264_crf_web" -an -ss "$((snip_microseconds/16))us" -f mp4 "${processing_dir}/${date}-960-web.mp4" | tee -a $log_file
+nice -19 ffmpeg -loglevel error -y -r 25 -f concat -safe 0 -i $processing_dir/${date}-list.txt -filter_complex "[0:v]split=5[in1][in2][in3][in4][in5];[in1]setpts=PTS/60[out1];[in2]setpts=PTS/120[out2];[in3]setpts=PTS/240[out3];[in4]setpts=PTS/60[out4];[in5]setpts=PTS/960[out5]" -map "[out1]" -c:v libx264 -preset "$libx264_preset" -crf "$libx264_crf" -an -ss "${snip_microseconds}us" -f mp4 "${processing_dir}/${date}-60.mp4" -map "[out2]" -c:v libx264 -preset "$libx264_preset" -crf "$libx264_crf" -an -ss "$((snip_microseconds/2))us" -f mp4 "${processing_dir}/${date}-120.mp4" -map "[out3]" -c:v libx264 -preset "$libx264_preset" -crf "$libx264_crf" -an -ss "$((snip_microseconds/4))us" -f mp4 "${processing_dir}/${date}-240.mp4" -map "[out4]" -c:v libx264 -preset "$libx264_preset_web" -crf "$libx264_crf_web" -an -ss "$((snip_microseconds))us" -f mp4 "${processing_dir}/${date}-60-web.mp4" -map "[out5]" -c:v libx264 -preset "$libx264_preset_web" -crf "$libx264_crf_web" -an -ss "$((snip_microseconds/16))us" -f mp4 "${processing_dir}/${date}-960-web.mp4" | tee -a $log_file
 print_stats $tik "FFmpeg"
 
 append_new_video "60"
 append_new_video "120"
 append_new_video "240"
 append_new_video "60-web"
-append_new_video "240-web"
 append_new_video "960-web"
 
 nice -19 ffmpeg -loglevel error -y -r 25 -sseof -10 -i "${processing_dir}/${date}-60.mp4" -c copy "${processing_dir}/latest-clip-60.mp4" | tee -a $log_file
 nice -19 ffmpeg -loglevel error -y -r 25 -sseof -10 -i "${processing_dir}/${date}-120.mp4" -c copy "${processing_dir}/latest-clip-120.mp4" | tee -a $log_file
 nice -19 ffmpeg -loglevel error -y -r 25 -sseof -10 -i "${processing_dir}/${date}-240.mp4" -c copy "${processing_dir}/latest-clip-240.mp4" | tee -a $log_file
 nice -19 ffmpeg -loglevel error -y -r 25 -sseof -10 -i "${processing_dir}/${date}-60-web.mp4" -c copy "${processing_dir}/latest-clip-60-web.mp4" | tee -a $log_file
-nice -19 ffmpeg -loglevel error -y -r 25 -sseof -10 -i "${processing_dir}/${date}-240-web.mp4" -c copy "${processing_dir}/latest-clip-240-web.mp4" | tee -a $log_file
 
 mv $processing_dir/*.mp4 $dir
 
@@ -111,9 +111,76 @@ ln -sf "${dir}/${date}-60.mp4" "${dir}/latest-60.mp4"
 ln -sf "${dir}/${date}-120.mp4" "${dir}/latest-120.mp4"
 ln -sf "${dir}/${date}-240.mp4" "${dir}/latest-240.mp4"
 ln -sf "${dir}/${date}-60-web.mp4" "${dir}/latest-60-web.mp4"
-ln -sf "${dir}/${date}-240-web.mp4" "${dir}/latest-240-web.mp4"
 ln -sf "${dir}/${date}-960-web.mp4" "${dir}/latest-960-web.mp4"
 ln -sf "$log_file" "${dir}/latest-output.txt"
+
+tik=$SECONDS
+echo "Starting upload to Cloudflare Stream" | tee -a $log_file
+
+response=$(curl -X POST --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}" -F file=@$dir/latest-960-web.mp4 https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream)
+video_id=$(jq -r '.result.uid' <<<"$response")
+
+echo "Latest timelapse video id ${video_id}" | tee -a $log_file
+
+response=$(curl --request PUT --url https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/storage/kv/namespaces/${CLOUDFLARE_KV_NAMESPACE_ID}/values/${TIMELAPSE_IDENTIFIER}-latest-video-id --header 'Content-Type: multipart/form-data' --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}" --form metadata={} --form value=$video_id)
+
+success=$(jq -r '.success' <<<"$response")
+
+echo "KV success: ${success}" | tee -a $log_file
+
+if [ -f "${dir}/latest_timelapse_video_id.txt" ]; then
+    latest_clip_video_id=$(cat $dir/latest_timelapse_video_id.txt)
+    echo "Deleting previous timelapse video" | tee -a $log_file
+    response=$(curl --request DELETE --url https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream/${latest_clip_video_id} --header 'Content-Type: application/json' --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}")
+    success=$(jq -r '.success' <<<"$response")
+    echo "Success: ${success}" | tee -a $log_file
+fi
+
+echo $video_id > $dir/latest_timelapse_video_id.txt
+
+if [ $# -eq 0 ]; then
+    response=$(curl -X POST --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}" -F file=@$dir/latest-clip-60-web.mp4 https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream)
+    video_id=$(jq -r '.result.uid' <<<"$response")
+
+    echo "Latest clip video id ${video_id}" | tee -a $log_file
+
+    response=$(curl --request PUT --url https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/storage/kv/namespaces/${CLOUDFLARE_KV_NAMESPACE_ID}/values/${TIMELAPSE_IDENTIFIER}-latest-video-clip-id --header 'Content-Type: multipart/form-data' --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}" --form metadata={} --form value=$video_id)
+
+    success=$(jq -r '.success' <<<"$response")
+    echo "KV success: ${success}" | tee -a $log_file
+
+    if [ -f "${dir}/latest_clip_video_id.txt" ]; then
+        latest_clip_video_id=$(cat $dir/latest_clip_video_id.txt)
+        echo "Deleting previous video clip" | tee -a $log_file
+        response=$(curl --request DELETE --url https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream/${latest_clip_video_id} --header 'Content-Type: application/json' --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}")
+        success=$(jq -r '.success' <<<"$response")
+        echo "Success: ${success}" | tee -a $log_file
+    fi
+
+    echo $video_id > $dir/latest_clip_video_id.txt
+else
+    echo "Swapping clip for full timelapse for end of day" | tee -a $log_file
+    if [ -f "${dir}/latest_timelapse_video_id.txt" ]; then
+        video_id=$(cat $dir/latest_timelapse_video_id.txt)
+
+        response=$(curl --request PUT --url https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/storage/kv/namespaces/${CLOUDFLARE_KV_NAMESPACE_ID}/values/${TIMELAPSE_IDENTIFIER}-latest-video-clip-id --header 'Content-Type: multipart/form-data' --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}" --form metadata={} --form value=$video_id)
+
+        success=$(jq -r '.success' <<<"$response")
+        echo "KV success: ${success}" | tee -a $log_file
+
+        if [ -f "${dir}/latest_clip_video_id.txt" ]; then
+            latest_clip_video_id=$(cat $dir/latest_clip_video_id.txt)
+
+            echo "Deleting previous video clip" | tee -a $log_file
+            response=$(curl --request DELETE --url https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream/${latest_clip_video_id} --header 'Content-Type: application/json' --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}")
+            success=$(jq -r '.success' <<<"$response")
+            echo "Success: ${success}" | tee -a $log_file
+            rm $dir/latest_clip_video_id.txt
+        fi
+    fi
+fi
+
+print_stats $tik "Upload"
 
 print_stats $start "Total processing"
 
