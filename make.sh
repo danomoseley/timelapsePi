@@ -19,6 +19,8 @@ start=$SECONDS
 date=$(date '+%y%m%d')
 log_file="$dir/$date-output.txt"
 
+start_minute=$(date '+%M')
+
 tmp_dir="$dir/$date"
 if [ ! -d $tmp_dir ]; then
     mkdir $tmp_dir
@@ -188,32 +190,38 @@ if [ $# -eq 0 ]; then
     echo $clip_video_id > "${dir}/latest_clip_video_id.txt"
     
     print_stats $tik "Latest clip upload"
+else
+    echo "Skipping latest clip upload" | tee -a $log_file
 fi
 
-tik=$SECONDS
+if [ $(( 10#$start_minute % 30 )) -eq 0 ] || [ "$1" == "sunset" ]; then
+    tik=$SECONDS
 
-timelapse_video_id=$(upload_stream_video "latest-960-web.mp4")
+    timelapse_video_id=$(upload_stream_video "latest-960-web.mp4")
 
-echo "Latest timelapse video id ${timelapse_video_id}" | tee -a $log_file
+    echo "Latest timelapse video id ${timelapse_video_id}" | tee -a $log_file
 
-wait_for_video_ready_to_stream $timelapse_video_id
+    wait_for_video_ready_to_stream $timelapse_video_id
 
-put_kv_value "latest-video-id" $timelapse_video_id
+    put_kv_value "latest-video-id" $timelapse_video_id
 
-if [ -f "${dir}/latest_timelapse_video_id.txt" ]; then
-    latest_timelapse_video_id=$(cat "${dir}/latest_timelapse_video_id.txt")
-    echo $latest_timelapse_video_id > "${dir}/previous_timelapse_video_id.txt"
+    if [ -f "${dir}/latest_timelapse_video_id.txt" ]; then
+        latest_timelapse_video_id=$(cat "${dir}/latest_timelapse_video_id.txt")
+        echo $latest_timelapse_video_id > "${dir}/previous_timelapse_video_id.txt"
+    fi
+
+    echo $timelapse_video_id > "${dir}/latest_timelapse_video_id.txt"
+
+    if [ "$1" == "sunset" ]; then
+        echo "Swapping clip for full timelapse for end of day" | tee -a $log_file
+
+        put_kv_value "latest-clip-video-id" $timelapse_video_id
+    fi
+
+    print_stats $tik "Latest timelapse upload"
+else
+    echo "Skipping latest timelapse upload" | tee -a $log_file
 fi
-
-echo $timelapse_video_id > "${dir}/latest_timelapse_video_id.txt"
-
-if [ "$1" == "sunset" ]; then
-    echo "Swapping clip for full timelapse for end of day" | tee -a $log_file
-
-    put_kv_value "latest-clip-video-id" $timelapse_video_id
-fi
-
-print_stats $tik "Latest timelapse upload"
 
 print_stats $upload_tik "Upload"
 
