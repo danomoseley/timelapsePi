@@ -114,109 +114,108 @@ ln -sf "${dir}/${date}-60-web.mp4" "${dir}/latest-60-web.mp4"
 ln -sf "${dir}/${date}-960-web.mp4" "${dir}/latest-960-web.mp4"
 ln -sf "$log_file" "${dir}/latest-output.txt"
 
-tik=$SECONDS
+delete_stream_video () {
+    video_id=$1
+    echo "Deleting Cloudflare Stream video (id: ${video_id})" | tee -a $log_file
+    response=$(curl -s --request DELETE --url https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream/${video_id} --header 'Content-Type: application/json' --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}")
+    success=$(jq -r '.success' <<<"$response")
+    echo "Success: ${success}" | tee -a $log_file
+}
+
+put_kv_value () {
+    key=$1
+    value=$2
+    response=$(curl -s --request PUT --url https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/storage/kv/namespaces/${CLOUDFLARE_KV_NAMESPACE_ID}/values/${TIMELAPSE_IDENTIFIER}-${key} --header 'Content-Type: multipart/form-data' --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}" --form metadata={} --form value=$value)
+
+    success=$(jq -r '.success' <<<"$response")
+
+    echo "KV success: ${success}" | tee -a $log_file
+}
+
+wait_for_video_ready_to_stream () {
+    video_id=$1
+    ready_to_stream=false
+
+    while [ "${ready_to_stream}" != "true" ]; do
+        response=$(curl -s -X GET --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}" --url https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream/${video_id} --header 'Content-Type: application/json')
+        ready_to_stream=$(jq -r '.result.readyToStream' <<<"$response")
+        if [ "${ready_to_stream}" != "true" ]; then
+            echo "Waiting for video (${video_id}) to be ready to stream..." | tee -a $log_file
+            sleep 5
+        fi
+    done
+}
+
+upload_stream_video () {
+    filename=$1
+    response=$(curl --limit-rate 625k -X POST --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}" -F file=@$dir/$filename https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream)
+    video_id=$(jq -r '.result.uid' <<<"$response")
+    echo $video_id
+}
+
+upload_tik=$SECONDS
+
 echo "Starting upload to Cloudflare Stream..." | tee -a $log_file
 
-response=$(curl -X POST --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}" -F file=@$dir/latest-960-web.mp4 https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream)
-video_id=$(jq -r '.result.uid' <<<"$response")
-
-echo "Latest timelapse video id ${video_id}" | tee -a $log_file
-
-ready_to_stream=false
-
-while [ "${ready_to_stream}" != "true" ]; do
-    response=$(curl -s -X GET --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}" --url https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream/${video_id} --header 'Content-Type: application/json')
-    ready_to_stream=$(jq -r '.result.readyToStream' <<<"$response")
-    if [ "${ready_to_stream}" != "true" ]; then
-	echo "Waiting for video to be ready to stream..." | tee -a $log_file
-        sleep 5
-    fi
-done
-
-response=$(curl -s --request PUT --url https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/storage/kv/namespaces/${CLOUDFLARE_KV_NAMESPACE_ID}/values/${TIMELAPSE_IDENTIFIER}-latest-video-id --header 'Content-Type: multipart/form-data' --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}" --form metadata={} --form value=$video_id)
-
-success=$(jq -r '.success' <<<"$response")
-
-echo "KV success: ${success}" | tee -a $log_file
+if [ -f "${dir}/previous_clip_video_id.txt" ]; then
+    previous_clip_video_id=$(cat "${dir}/previous_clip_video_id.txt")
+    delete_stream_video $previous_clip_video_id
+    rm "${dir}/previous_clip_video_id.txt"
+fi
 
 if [ -f "${dir}/previous_timelapse_video_id.txt" ]; then
     previous_timelapse_video_id=$(cat "${dir}/previous_timelapse_video_id.txt")
-    echo "Deleting previous timelapse video (id: ${previous_timelapse_video_id})" | tee -a $log_file
-    response=$(curl -s --request DELETE --url https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream/${previous_timelapse_video_id} --header 'Content-Type: application/json' --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}")
-    success=$(jq -r '.success' <<<"$response")
-    echo "Success: ${success}" | tee -a $log_file
+    delete_stream_video $previous_timelapse_video_id
+    rm "${dir}/previous_timelapse_video_id.txt"
 fi
+
+if [ $# -eq 0 ]; then
+    tik=$SECONDS
+
+    clip_video_id=$(upload_stream_video "latest-clip-60-web.mp4")
+
+    echo "Latest clip video id ${clip_video_id}" | tee -a $log_file
+    
+    wait_for_video_ready_to_stream $clip_video_id
+
+    put_kv_value "latest-clip-video-id" $clip_video_id
+
+    if [ -f "${dir}/latest_clip_video_id.txt" ]; then
+        latest_clip_video_id=$(cat "${dir}/latest_clip_video_id.txt")
+        echo $latest_clip_video_id > "${dir}/previous_clip_video_id.txt"
+    fi
+   
+    echo $clip_video_id > "${dir}/latest_clip_video_id.txt"
+    
+    print_stats $tik "Latest clip upload"
+fi
+
+tik=$SECONDS
+
+timelapse_video_id=$(upload_stream_video "latest-960-web.mp4")
+
+echo "Latest timelapse video id ${timelapse_video_id}" | tee -a $log_file
+
+wait_for_video_ready_to_stream $timelapse_video_id
+
+put_kv_value "latest-video-id" $timelapse_video_id
 
 if [ -f "${dir}/latest_timelapse_video_id.txt" ]; then
     latest_timelapse_video_id=$(cat "${dir}/latest_timelapse_video_id.txt")
     echo $latest_timelapse_video_id > "${dir}/previous_timelapse_video_id.txt"
 fi
 
-echo $video_id > "${dir}/latest_timelapse_video_id.txt"
+echo $timelapse_video_id > "${dir}/latest_timelapse_video_id.txt"
 
-if [ $# -eq 0 ]; then
-    response=$(curl -X POST --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}" -F file=@$dir/latest-clip-60-web.mp4 https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream)
-    clip_video_id=$(jq -r '.result.uid' <<<"$response")
-
-    echo "Latest clip video id ${clip_video_id}" | tee -a $log_file
-    ready_to_stream=false
-
-    while [ "${ready_to_stream}" != "true" ]; do
-        response=$(curl -s -X GET --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}" --url https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream/${clip_video_id} --header 'Content-Type: application/json')
-        ready_to_stream=$(jq -r '.result.readyToStream' <<<"$response")
-        if [ "${ready_to_stream}" != "true" ]; then
-	    echo "Waiting for clip video to be ready to stream..." | tee -a $log_file
-            sleep 5
-        fi
-    done
-
-    response=$(curl -s --request PUT --url https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/storage/kv/namespaces/${CLOUDFLARE_KV_NAMESPACE_ID}/values/${TIMELAPSE_IDENTIFIER}-latest-clip-video-id --header 'Content-Type: multipart/form-data' --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}" --form metadata={} --form value=$clip_video_id)
-
-    success=$(jq -r '.success' <<<"$response")
-    echo "KV success: ${success}" | tee -a $log_file
-
-    if [ -f "${dir}/previous_clip_video_id.txt" ]; then
-        previous_clip_video_id=$(cat "${dir}/previous_clip_video_id.txt")
-	echo "Deleting previous clip video (id: ${previous_clip_video_id})" | tee -a $log_file
-        response=$(curl -s --request DELETE --url https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream/${previous_clip_video_id} --header 'Content-Type: application/json' --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}")
-        success=$(jq -r '.success' <<<"$response")
-        echo "Success: ${success}" | tee -a $log_file
-    fi
-
-    if [ -f "${dir}/latest_clip_video_id.txt" ]; then
-        latest_clip_video_id=$(cat "${dir}/latest_clip_video_id.txt")
-        echo $latest_clip_video_id > "${dir}/previous_clip_video_id.txt"
-    fi
-
-    echo $clip_video_id > "${dir}/latest_clip_video_id.txt"
-else
+if [ "$1" == "sunset" ]; then
     echo "Swapping clip for full timelapse for end of day" | tee -a $log_file
 
-    response=$(curl -s --request PUT --url https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/storage/kv/namespaces/${CLOUDFLARE_KV_NAMESPACE_ID}/values/${TIMELAPSE_IDENTIFIER}-latest-clip-video-id --header 'Content-Type: multipart/form-data' --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}" --form metadata={} --form value=$video_id)
-
-    success=$(jq -r '.success' <<<"$response")
-    echo "KV success: ${success}" | tee -a $log_file
-
-    if [ -f "${dir}/latest_clip_video_id.txt" ]; then
-        latest_clip_video_id=$(cat "${dir}/latest_clip_video_id.txt")
-
-        echo "Deleting latest clip video (id: ${latest_clip_video_id})" | tee -a $log_file
-        response=$(curl -s --request DELETE --url https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream/${latest_clip_video_id} --header 'Content-Type: application/json' --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}")
-        success=$(jq -r '.success' <<<"$response")
-        echo "Success: ${success}" | tee -a $log_file
-        rm "${dir}/latest_clip_video_id.txt"
-    fi
-    if [ -f "${dir}/previous_clip_video_id.txt" ]; then
-        previous_clip_video_id=$(cat "${dir}/previous_clip_video_id.txt")
-        echo "Deleting previous clip video (id: ${previous_clip_video_id})" | tee -a $log_file
-        response=$(curl -s --request DELETE --url https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream/${previous_clip_video_id} --header 'Content-Type: application/json' --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}")
-        success=$(jq -r '.success' <<<"$response")
-        echo "Success: ${success}" | tee -a $log_file
-        rm "${dir}/previous_clip_video_id.txt"
-    fi
+    put_kv_value "latest-clip-video-id" $timelapse_video_id
 fi
 
-print_stats $tik "Upload"
+print_stats $tik "Latest timelapse upload"
+
+print_stats $upload_tik "Upload"
 
 print_stats $start "Total processing"
 
