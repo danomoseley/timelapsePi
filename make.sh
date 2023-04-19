@@ -7,7 +7,7 @@ libx264_preset="medium"
 libx264_crf="17"
 
 libx264_preset_web="medium"
-libx264_crf_web="20"
+libx264_crf_web="19"
 
 snip_microseconds=89300
 
@@ -101,7 +101,6 @@ append_new_video "60-web"
 append_new_video "960-web"
 
 nice -19 ffmpeg -loglevel error -y -r 25 -sseof -10 -i "${processing_dir}/${date}-60.mp4" -c copy "${processing_dir}/latest-clip-60.mp4" | tee -a $log_file
-nice -19 ffmpeg -loglevel error -y -r 25 -sseof -10 -i "${processing_dir}/${date}-120.mp4" -c copy "${processing_dir}/latest-clip-120.mp4" | tee -a $log_file
 nice -19 ffmpeg -loglevel error -y -r 25 -sseof -10 -i "${processing_dir}/${date}-240.mp4" -c copy "${processing_dir}/latest-clip-240.mp4" | tee -a $log_file
 nice -19 ffmpeg -loglevel error -y -r 25 -sseof -10 -i "${processing_dir}/${date}-60-web.mp4" -c copy "${processing_dir}/latest-clip-60-web.mp4" | tee -a $log_file
 
@@ -112,7 +111,6 @@ trap - EXIT
 rm -Rf $tmp_dir
 
 ln -sf "${dir}/${date}-60.mp4" "${dir}/latest-60.mp4"
-ln -sf "${dir}/${date}-120.mp4" "${dir}/latest-120.mp4"
 ln -sf "${dir}/${date}-240.mp4" "${dir}/latest-240.mp4"
 ln -sf "${dir}/${date}-60-web.mp4" "${dir}/latest-60-web.mp4"
 ln -sf "${dir}/${date}-960-web.mp4" "${dir}/latest-960-web.mp4"
