@@ -119,22 +119,11 @@ ln -sf "${dir}/${date}-60-web.mp4" "${dir}/latest-60-web.mp4"
 ln -sf "${dir}/${date}-960-web.mp4" "${dir}/latest-960-web.mp4"
 ln -sf "$log_file" "${dir}/latest-output.txt"
 
-delete_stream_video () {
-    video_id=$1
-    echo "Deleting Cloudflare Stream video (id: ${video_id})" | tee -a $log_file
-    status_code=$(curl -s --write-out '%{http_code}' --output /dev/null --request DELETE --url https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream/${video_id} --header 'Content-Type: application/json' --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}")
-    echo "Status: ${status_code}" | tee -a $log_file
-}
-
-put_kv_value () {
-    key=$1
-    value=$2
-    response=$(curl -s --request PUT --url https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/storage/kv/namespaces/${CLOUDFLARE_KV_NAMESPACE_ID}/values/${TIMELAPSE_IDENTIFIER}-${key} --header 'Content-Type: multipart/form-data' --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}" --form metadata={} --form value=$value)
-
-    success=$(jq -r '.success' <<<"$response")
-
-    echo "KV setting ${TIMELAPSE_IDENTIFIER}-${key}=${value}" | tee -a $log_file
-    echo "KV success: ${success}" | tee -a $log_file
+upload_stream_video () {
+    filename=$1
+    response=$(curl --limit-rate ${CURL_UPLOAD_LIMIT} -X POST --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}" -F file=@$dir/$filename https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream)
+    video_id=$(jq -r '.result.uid' <<<"$response")
+    echo $video_id
 }
 
 wait_for_video_ready_to_stream () {
@@ -161,11 +150,22 @@ wait_for_video_ready_to_stream () {
     done
 }
 
-upload_stream_video () {
-    filename=$1
-    response=$(curl --limit-rate ${CURL_UPLOAD_LIMIT} -X POST --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}" -F file=@$dir/$filename https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream)
-    video_id=$(jq -r '.result.uid' <<<"$response")
-    echo $video_id
+delete_stream_video () {
+    video_id=$1
+    echo "Deleting Cloudflare Stream video (id: ${video_id})" | tee -a $log_file
+    status_code=$(curl -s --write-out '%{http_code}' --output /dev/null --request DELETE --url https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream/${video_id} --header 'Content-Type: application/json' --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}")
+    echo "Status: ${status_code}" | tee -a $log_file
+}
+
+put_kv_value () {
+    key=$1
+    value=$2
+    response=$(curl -s --request PUT --url https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/storage/kv/namespaces/${CLOUDFLARE_KV_NAMESPACE_ID}/values/${TIMELAPSE_IDENTIFIER}-${key} --header 'Content-Type: multipart/form-data' --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}" --form metadata={} --form value=$value)
+
+    success=$(jq -r '.success' <<<"$response")
+
+    echo "KV setting ${TIMELAPSE_IDENTIFIER}-${key}=${value}" | tee -a $log_file
+    echo "KV success: ${success}" | tee -a $log_file
 }
 
 upload_tik=$SECONDS
@@ -241,4 +241,3 @@ fi
 
 print_stats $upload_tik "Total upload"
 print_stats $start "Total processing"
-
