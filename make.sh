@@ -14,6 +14,7 @@ snip_microseconds=89300
 dir=$(cd $(dirname $0); pwd -P)
 source $dir/config.cfg
 
+CURL_UPLOAD_LIMIT=${CURL_UPLOAD_LIMIT:-625k}
 DAILY_TIMELAPSE_UPLOAD_INTERVAL=${DAILY_TIMELAPSE_UPLOAD_INTERVAL:-30}
 
 start=$SECONDS
@@ -121,9 +122,8 @@ ln -sf "$log_file" "${dir}/latest-output.txt"
 delete_stream_video () {
     video_id=$1
     echo "Deleting Cloudflare Stream video (id: ${video_id})" | tee -a $log_file
-    response=$(curl -s --request DELETE --url https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream/${video_id} --header 'Content-Type: application/json' --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}")
-    success=$(jq -r '.success' <<<"$response")
-    echo "Success: ${success}" | tee -a $log_file
+    status_code=$(curl -s --write-out '%{http_code}' --output /dev/null --request DELETE --url https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream/${video_id} --header 'Content-Type: application/json' --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}")
+    echo "Status: ${status_code}" | tee -a $log_file
 }
 
 put_kv_value () {
@@ -134,6 +134,7 @@ put_kv_value () {
     success=$(jq -r '.success' <<<"$response")
 
     echo "KV success: ${success}" | tee -a $log_file
+    echo "${TIMELAPSE_IDENTIFIER}-${key}=${value}" | tee -a $log_file
 }
 
 wait_for_video_ready_to_stream () {
@@ -152,7 +153,7 @@ wait_for_video_ready_to_stream () {
 
 upload_stream_video () {
     filename=$1
-    response=$(curl --limit-rate 625k -X POST --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}" -F file=@$dir/$filename https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream)
+    response=$(curl --limit-rate ${CURL_UPLOAD_LIMIT} -X POST --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}" -F file=@$dir/$filename https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream)
     video_id=$(jq -r '.result.uid' <<<"$response")
     echo $video_id
 }
@@ -160,6 +161,8 @@ upload_stream_video () {
 upload_tik=$SECONDS
 
 echo "Starting upload to Cloudflare Stream..." | tee -a $log_file
+
+echo "Deleting previous videos" | tee -a $log_file
 
 if [ -f "${dir}/previous_clip_video_id.txt" ]; then
     previous_clip_video_id=$(cat "${dir}/previous_clip_video_id.txt")
@@ -216,7 +219,6 @@ if [ $(( 10#$start_minute % $DAILY_TIMELAPSE_UPLOAD_INTERVAL )) -eq 0 ] || [ "$1
 
     if [ "$1" == "sunset" ]; then
         echo "Swapping clip for full timelapse for end of day" | tee -a $log_file
-
         put_kv_value "latest-clip-video-id" $timelapse_video_id
     fi
 
@@ -226,6 +228,5 @@ else
 fi
 
 print_stats $upload_tik "Upload"
-
 print_stats $start "Total processing"
 
