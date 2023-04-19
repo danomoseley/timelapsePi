@@ -2,17 +2,17 @@
 set -e
 umask 002
 
-libx264_preset="medium"
-# Lower CRF = higher quality, 17 should be effectively lossless and 23 is default
-libx264_crf="17"
-
-libx264_preset_web="medium"
-libx264_crf_web="19"
-
-snip_microseconds=89300
-
 dir=$(cd $(dirname $0); pwd -P)
 source $dir/config.cfg
+
+libx264_preset=${LIBX264_PRESET:-medium}`
+# Lower CRF = higher quality, 17 should be effectively lossless and 23 is default
+libx264_crf=${LIBX264_CRF:-17}
+
+libx264_preset_web=${LIBX264_PRESET_WEB:-medium}
+libx264_crf_web=${LIBX264_CRF_WEB:-19}
+
+snip_microseconds=${SNIP_MICROSECONDS:-89300}
 
 CURL_UPLOAD_LIMIT=${CURL_UPLOAD_LIMIT:-500k}
 DAILY_TIMELAPSE_UPLOAD_INTERVAL=${DAILY_TIMELAPSE_UPLOAD_INTERVAL:-30}
