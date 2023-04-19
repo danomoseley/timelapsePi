@@ -12,7 +12,8 @@ libx264_crf=${LIBX264_CRF:-17}
 libx264_preset_web=${LIBX264_PRESET_WEB:-medium}
 libx264_crf_web=${LIBX264_CRF_WEB:-19}
 
-snip_microseconds=${SNIP_MICROSECONDS:-89300}
+# Mystery value to help fix extra frame lag between stitched timelapse chunks
+snip_microseconds=${SNIP_MICROSECONDS:-89600}
 
 CURL_UPLOAD_LIMIT=${CURL_UPLOAD_LIMIT:-500k}
 DAILY_TIMELAPSE_UPLOAD_INTERVAL=${DAILY_TIMELAPSE_UPLOAD_INTERVAL:-30}
