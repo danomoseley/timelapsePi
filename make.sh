@@ -5,7 +5,7 @@ umask 002
 dir=$(cd $(dirname $0); pwd -P)
 source $dir/config.cfg
 
-libx264_preset=${LIBX264_PRESET:-medium}`
+libx264_preset=${LIBX264_PRESET:-medium}
 # Lower CRF = higher quality, 17 should be effectively lossless and 23 is default
 libx264_crf=${LIBX264_CRF:-17}
 
