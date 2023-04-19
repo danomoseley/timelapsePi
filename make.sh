@@ -142,7 +142,7 @@ wait_for_video_ready_to_stream () {
                 echo "Waiting 10s for video (${video_id}) to be ready to stream..." | tee -a $log_file
                 sleep 10
             else
-                echo "Giving up on video ready to stream: ${response}" | tee -a $log_file
+                echo "Giving up on video ready to stream, skipping KV update: ${response}" | tee -a $log_file
                 break
             fi
         else
