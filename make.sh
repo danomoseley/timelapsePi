@@ -14,6 +14,8 @@ snip_microseconds=89300
 dir=$(cd $(dirname $0); pwd -P)
 source $dir/config.cfg
 
+DAILY_TIMELAPSE_UPLOAD_INTERVAL=${DAILY_TIMELAPSE_UPLOAD_INTERVAL:-30}
+
 start=$SECONDS
 
 date=$(date '+%y%m%d')
@@ -171,7 +173,7 @@ if [ -f "${dir}/previous_timelapse_video_id.txt" ]; then
     rm "${dir}/previous_timelapse_video_id.txt"
 fi
 
-if [ $# -eq 0 ]; then
+if [ "$1" != "sunset" ]; then
     tik=$SECONDS
 
     clip_video_id=$(upload_stream_video "latest-clip-60-web.mp4")
@@ -194,7 +196,7 @@ else
     echo "Skipping latest clip upload" | tee -a $log_file
 fi
 
-if [ $(( 10#$start_minute % 30 )) -eq 0 ] || [ "$1" == "sunset" ]; then
+if [ $(( 10#$start_minute % $DAILY_TIMELAPSE_UPLOAD_INTERVAL )) -eq 0 ] || [ "$1" == "sunset" ]; then
     tik=$SECONDS
 
     timelapse_video_id=$(upload_stream_video "latest-960-web.mp4")
