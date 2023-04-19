@@ -128,6 +128,7 @@ upload_stream_video () {
 
 wait_for_video_ready_to_stream () {
     video_id=$1
+    kv_key=$2
     ready_to_stream=false
 
     attempts=0
@@ -135,18 +136,19 @@ wait_for_video_ready_to_stream () {
         response=$(curl -s -X GET --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}" --url https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream/${video_id} --header 'Content-Type: application/json')
         ready_to_stream=$(jq -r '.result.readyToStream' <<<"$response")
 
-    attempts=$((attempts+1))
+        attempts=$((attempts+1))
         if [ "${ready_to_stream}" != "true" ]; then
-        if (( attempts <= 5 )); then
+            if (( attempts <= 5 )); then
                 echo "Waiting 10s for video (${video_id}) to be ready to stream..." | tee -a $log_file
                 sleep 10
-        else
-        echo "Giving up on video ready to stream: ${response}" | tee -a $log_file
+            else
+                echo "Giving up on video ready to stream: ${response}" | tee -a $log_file
                 break
-        fi
+            fi
         else
             echo "Video ${video_id} ready to stream" | tee -a $log_file
-    fi
+            put_kv_value $kv_key $video_id
+        fi
     done
 }
 
@@ -194,10 +196,8 @@ if [ "$1" != "sunset" ]; then
 
     echo "Latest clip video id ${clip_video_id}" | tee -a $log_file
     
-    wait_for_video_ready_to_stream $clip_video_id
-
-    put_kv_value "latest-clip-video-id" $clip_video_id
-
+    wait_for_video_ready_to_stream $clip_video_id "latest-clip-video-id"
+    
     if [ -f "${dir}/latest_clip_video_id.txt" ]; then
         latest_clip_video_id=$(cat "${dir}/latest_clip_video_id.txt")
         echo $latest_clip_video_id > "${dir}/previous_clip_video_id.txt"
@@ -218,9 +218,7 @@ if [ $(( 10#$start_minute % $DAILY_TIMELAPSE_UPLOAD_INTERVAL )) -eq 0 ] || [ "$1
 
     echo "Latest timelapse video id ${timelapse_video_id}" | tee -a $log_file
 
-    wait_for_video_ready_to_stream $timelapse_video_id
-
-    put_kv_value "latest-video-id" $timelapse_video_id
+    wait_for_video_ready_to_stream $timelapse_video_id "latest-video-id"
 
     if [ -f "${dir}/latest_timelapse_video_id.txt" ]; then
         latest_timelapse_video_id=$(cat "${dir}/latest_timelapse_video_id.txt")
