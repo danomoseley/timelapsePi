@@ -133,20 +133,28 @@ put_kv_value () {
 
     success=$(jq -r '.success' <<<"$response")
 
+    echo "KV setting ${TIMELAPSE_IDENTIFIER}-${key}=${value}" | tee -a $log_file
     echo "KV success: ${success}" | tee -a $log_file
-    echo "${TIMELAPSE_IDENTIFIER}-${key}=${value}" | tee -a $log_file
 }
 
 wait_for_video_ready_to_stream () {
     video_id=$1
     ready_to_stream=false
 
+    attempts=0
     while [ "${ready_to_stream}" != "true" ]; do
         response=$(curl -s -X GET --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}" --url https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream/${video_id} --header 'Content-Type: application/json')
         ready_to_stream=$(jq -r '.result.readyToStream' <<<"$response")
+
+	attempts=$((attempts+1))
         if [ "${ready_to_stream}" != "true" ]; then
-            echo "Waiting for video (${video_id}) to be ready to stream..." | tee -a $log_file
-            sleep 5
+	    if (( attempts <= 5 )); then
+                echo "Waiting 10s for video (${video_id}) to be ready to stream..." | tee -a $log_file
+                sleep 10
+	    else
+		echo "Giving up on video ready to stream: ${response}" | tee -a $log_file
+                break
+	    fi
         fi
     done
 }
@@ -179,6 +187,7 @@ fi
 if [ "$1" != "sunset" ]; then
     tik=$SECONDS
 
+    echo "Uploading latest clip..." | tee -a $log_file
     clip_video_id=$(upload_stream_video "latest-clip-60-web.mp4")
 
     echo "Latest clip video id ${clip_video_id}" | tee -a $log_file
@@ -202,6 +211,7 @@ fi
 if [ $(( 10#$start_minute % $DAILY_TIMELAPSE_UPLOAD_INTERVAL )) -eq 0 ] || [ "$1" == "sunset" ]; then
     tik=$SECONDS
 
+    echo "Uploading latest daily timelapse..." | tee -a $log_file
     timelapse_video_id=$(upload_stream_video "latest-960-web.mp4")
 
     echo "Latest timelapse video id ${timelapse_video_id}" | tee -a $log_file
@@ -227,6 +237,6 @@ else
     echo "Skipping latest timelapse upload" | tee -a $log_file
 fi
 
-print_stats $upload_tik "Upload"
+print_stats $upload_tik "Total upload"
 print_stats $start "Total processing"
 
