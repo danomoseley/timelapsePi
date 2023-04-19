@@ -7,7 +7,7 @@ libx264_preset="medium"
 libx264_crf="17"
 
 libx264_preset_web="medium"
-libx264_crf_web="23"
+libx264_crf_web="20"
 
 snip_microseconds=89300
 
@@ -92,11 +92,10 @@ fi
 
 tik=$SECONDS
 echo "Starting FFmpeg processing (preset: ${libx264_preset}, crf: ${libx264_crf})..." | tee -a $log_file
-nice -19 ffmpeg -loglevel error -y -r 25 -f concat -safe 0 -i $processing_dir/${date}-list.txt -filter_complex "[0:v]split=5[in1][in2][in3][in4][in5];[in1]setpts=PTS/60[out1];[in2]setpts=PTS/120[out2];[in3]setpts=PTS/240[out3];[in4]setpts=PTS/60[out4];[in5]setpts=PTS/960[out5]" -map "[out1]" -c:v libx264 -preset "$libx264_preset" -crf "$libx264_crf" -an -ss "${snip_microseconds}us" -f mp4 "${processing_dir}/${date}-60.mp4" -map "[out2]" -c:v libx264 -preset "$libx264_preset" -crf "$libx264_crf" -an -ss "$((snip_microseconds/2))us" -f mp4 "${processing_dir}/${date}-120.mp4" -map "[out3]" -c:v libx264 -preset "$libx264_preset" -crf "$libx264_crf" -an -ss "$((snip_microseconds/4))us" -f mp4 "${processing_dir}/${date}-240.mp4" -map "[out4]" -c:v libx264 -preset "$libx264_preset_web" -crf "$libx264_crf_web" -an -ss "$((snip_microseconds))us" -f mp4 "${processing_dir}/${date}-60-web.mp4" -map "[out5]" -c:v libx264 -preset "$libx264_preset_web" -crf "$libx264_crf_web" -an -ss "$((snip_microseconds/16))us" -f mp4 "${processing_dir}/${date}-960-web.mp4" | tee -a $log_file
+nice -19 ffmpeg -loglevel error -y -r 25 -f concat -safe 0 -i $processing_dir/${date}-list.txt -filter_complex "[0:v]split=4[in1][in2][in3][in4];[in1]setpts=PTS/60[out1];[in2]setpts=PTS/240[out2];[in3]setpts=PTS/60[out3];[in4]setpts=PTS/960[out4]" -map "[out1]" -c:v libx264 -preset "$libx264_preset" -crf "$libx264_crf" -an -ss "${snip_microseconds}us" -f mp4 "${processing_dir}/${date}-60.mp4" -map "[out2]" -c:v libx264 -preset "$libx264_preset" -crf "$libx264_crf" -an -ss "$((snip_microseconds/4))us" -f mp4 "${processing_dir}/${date}-240.mp4" -map "[out3]" -c:v libx264 -preset "$libx264_preset_web" -crf "$libx264_crf_web" -an -ss "$((snip_microseconds))us" -f mp4 "${processing_dir}/${date}-60-web.mp4" -map "[out4]" -c:v libx264 -preset "$libx264_preset_web" -crf "$libx264_crf_web" -an -ss "$((snip_microseconds/16))us" -f mp4 "${processing_dir}/${date}-960-web.mp4" | tee -a $log_file
 print_stats $tik "FFmpeg"
 
 append_new_video "60"
-append_new_video "120"
 append_new_video "240"
 append_new_video "60-web"
 append_new_video "960-web"
@@ -239,3 +238,4 @@ fi
 
 print_stats $upload_tik "Total upload"
 print_stats $start "Total processing"
+
