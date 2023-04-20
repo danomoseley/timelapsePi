@@ -56,11 +56,11 @@ append_new_video () {
         tik=$SECONDS
         echo "file '${dir}/${date}-${speed}.mp4'" >> "${processing_dir}/${date}-${speed}-list.txt"
         echo "file '${processing_dir}/${date}-${speed}.mp4'" >> "${processing_dir}/${date}-${speed}-list.txt"
-    nice -19 ffmpeg -loglevel error -y -r 25 -f concat -safe 0 -i "${processing_dir}/${date}-${speed}-list.txt" -c copy -f mp4 "${processing_dir}/${date}-${speed}.mp4~incomplete" | tee -a $log_file
-    mv "${processing_dir}/${date}-${speed}.mp4~incomplete" "${processing_dir}/${date}-${speed}.mp4"
-    merge_timestamp=$(get_video_duration "${dir}/${date}-${speed}.mp4")
-    echo "${speed}x merge timestamp: ${merge_timestamp}" | tee -a $log_file
-    echo "${speed}x concat: $((SECONDS-tik))s" | tee -a $log_file
+        nice -19 ffmpeg -loglevel error -y -r 25 -f concat -safe 0 -i "${processing_dir}/${date}-${speed}-list.txt" -c copy -f mp4 "${processing_dir}/${date}-${speed}.mp4~incomplete" | tee -a $log_file
+        mv "${processing_dir}/${date}-${speed}.mp4~incomplete" "${processing_dir}/${date}-${speed}.mp4"
+        merge_timestamp=$(get_video_duration "${dir}/${date}-${speed}.mp4")
+        echo "${speed}x merge timestamp: ${merge_timestamp}" | tee -a $log_file
+        echo "${speed}x concat: $((SECONDS-tik))s" | tee -a $log_file
     else
         echo "No ${speed}x video yet, no concat to do." | tee -a $log_file
     fi
