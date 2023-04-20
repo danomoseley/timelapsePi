@@ -37,8 +37,14 @@ IFS=':' read sunset_hour sunset_minute <<< "$sunset"
 sunset_hour=$((sunset_hour+12))
 sunset_range_end_hour=$sunset_hour
 sunset_minute=$((10#$sunset_minute))
-sunset_range_end_minute=$((sunset_minute+SUNRISE_SUNSET_BUFFER_MINUTES-10+SUNSET_EXTRA_BUFFER_MINUTES))
+sunset_minute_with_buffer=$((sunset_minute+SUNRISE_SUNSET_BUFFER_MINUTES-10))
+sunset_range_end_minute=$sunset_minute_with_buffer
 sunset_range_end_minute=$(echo "($sunset_range_end_minute + 9) / 10 * 10" | bc)
+
+if [ "$sunset_range_end_minute" -eq "$sunset_minute_with_buffer" ]; then
+    sunset_range_end_minute=$((sunset_range_end_minute+10))
+fi
+
 if ((sunset_range_end_minute > 59)); then
     sunset_range_end_minute=$((sunset_range_end_minute-60))
     sunset_range_end_hour=$((sunset_range_end_hour+1))
