@@ -4,7 +4,6 @@ DIR=$(cd $(dirname $0); pwd -P)
 source $DIR/config.cfg
 
 make_command="/usr/bin/screen -dmS make-timelapse ${DIR}/make.sh"
-SUNSET_EXTRA_BUFFER_MINUTES=${SUNSET_EXTRA_BUFFER_MINUTES:-0}
 
 tomorrow=$(date --date='tomorrow' +"%Y-%m-%d")
 
