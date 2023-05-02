@@ -9,11 +9,8 @@ libx264_preset=${LIBX264_PRESET:-medium}
 # Lower CRF = higher quality, 17 should be effectively lossless and 23 is default
 libx264_crf=${LIBX264_CRF:-17}
 
-libx264_preset_web=${LIBX264_PRESET_WEB:-medium}
-libx264_crf_web=${LIBX264_CRF_WEB:-19}
-
 # Mystery value to help fix extra frame lag between stitched timelapse chunks
-snip_microseconds=${SNIP_MICROSECONDS:-89600}
+snip_microseconds=${SNIP_MICROSECONDS:-90500}
 
 CURL_UPLOAD_LIMIT=${CURL_UPLOAD_LIMIT:-500k}
 DAILY_TIMELAPSE_UPLOAD_INTERVAL=${DAILY_TIMELAPSE_UPLOAD_INTERVAL:-30}
@@ -92,18 +89,20 @@ if [ ! -s "$processing_dir/${date}-list.txt" ]; then
 fi
 
 tik=$SECONDS
-echo "Starting FFmpeg processing (preset: ${libx264_preset}, crf: ${libx264_crf})..." | tee -a $log_file
-nice -19 ffmpeg -loglevel error -y -r 25 -f concat -safe 0 -i $processing_dir/${date}-list.txt -filter_complex "[0:v]split=4[in1][in2][in3][in4];[in1]setpts=PTS/60[out1];[in2]setpts=PTS/240[out2];[in3]setpts=PTS/60[out3];[in4]setpts=PTS/960[out4]" -map "[out1]" -c:v libx264 -preset "$libx264_preset" -crf "$libx264_crf" -an -ss "${snip_microseconds}us" -f mp4 "${processing_dir}/${date}-60.mp4" -map "[out2]" -c:v libx264 -preset "$libx264_preset" -crf "$libx264_crf" -an -ss "$((snip_microseconds/4))us" -f mp4 "${processing_dir}/${date}-240.mp4" -map "[out3]" -c:v libx264 -preset "$libx264_preset_web" -crf "$libx264_crf_web" -an -ss "$((snip_microseconds))us" -f mp4 "${processing_dir}/${date}-60-web.mp4" -map "[out4]" -c:v libx264 -preset "$libx264_preset_web" -crf "$libx264_crf_web" -an -ss "$((snip_microseconds/16))us" -f mp4 "${processing_dir}/${date}-960-web.mp4" | tee -a $log_file
-print_stats $tik "FFmpeg"
+echo "Starting FFmpeg 60x processing (preset: ${libx264_preset}, crf: ${libx264_crf})..." | tee -a $log_file
+nice -19 ffmpeg -loglevel error -y -r 25 -f concat -safe 0 -i $processing_dir/${date}-list.txt -filter:v "setpts=PTS/60" -c:v libx264 -preset "$libx264_preset" -crf "$libx264_crf" -an -ss "${snip_microseconds}us" -f mp4 "${processing_dir}/${date}-60.mp4" | tee -a $log_file
+print_stats $tik "FFmpeg 60x"
 
 append_new_video "60"
-append_new_video "240"
-append_new_video "60-web"
-append_new_video "960-web"
 
 nice -19 ffmpeg -loglevel error -y -r 25 -sseof -10 -i "${processing_dir}/${date}-60.mp4" -c copy "${processing_dir}/latest-clip-60.mp4" | tee -a $log_file
-nice -19 ffmpeg -loglevel error -y -r 25 -sseof -10 -i "${processing_dir}/${date}-240.mp4" -c copy "${processing_dir}/latest-clip-240.mp4" | tee -a $log_file
-nice -19 ffmpeg -loglevel error -y -r 25 -sseof -10 -i "${processing_dir}/${date}-60-web.mp4" -c copy "${processing_dir}/latest-clip-60-web.mp4" | tee -a $log_file
+
+if [ $(( 10#$start_minute % $DAILY_TIMELAPSE_UPLOAD_INTERVAL )) -eq 0 ] || [ "$1" == "sunset" ]; then 
+    tik=$SECONDS
+    echo "Starting FFmpeg 960x processing..." | tee -a $log_file
+    nice -19 ffmpeg -loglevel error -y -i "${processing_dir}/${date}-60.mp4" -filter:v "setpts=PTS/16" -c:v libx264 -preset "$libx264_preset" -crf "$libx264_crf" -an -f mp4 "${processing_dir}/${date}-960.mp4" | tee -a $log_file
+    print_stats $tik "FFmpeg 960x"
+fi
 
 mv $processing_dir/*.mp4 $dir
 
@@ -112,9 +111,7 @@ trap - EXIT
 rm -Rf $tmp_dir
 
 ln -sf "${dir}/${date}-60.mp4" "${dir}/latest-60.mp4"
-ln -sf "${dir}/${date}-240.mp4" "${dir}/latest-240.mp4"
-ln -sf "${dir}/${date}-60-web.mp4" "${dir}/latest-60-web.mp4"
-ln -sf "${dir}/${date}-960-web.mp4" "${dir}/latest-960-web.mp4"
+ln -sf "${dir}/${date}-960.mp4" "${dir}/latest-960.mp4"
 ln -sf "$log_file" "${dir}/latest-output.txt"
 
 upload_stream_video () {
@@ -190,7 +187,7 @@ if [ "$1" != "sunset" ]; then
     tik=$SECONDS
 
     echo "Uploading latest clip..." | tee -a $log_file
-    clip_video_id=$(upload_stream_video "latest-clip-60-web.mp4")
+    clip_video_id=$(upload_stream_video "latest-clip-60.mp4")
 
     echo "Latest clip video id ${clip_video_id}" | tee -a $log_file
     
@@ -212,7 +209,7 @@ if [ $(( 10#$start_minute % $DAILY_TIMELAPSE_UPLOAD_INTERVAL )) -eq 0 ] || [ "$1
     tik=$SECONDS
 
     echo "Uploading latest daily timelapse..." | tee -a $log_file
-    timelapse_video_id=$(upload_stream_video "latest-960-web.mp4")
+    timelapse_video_id=$(upload_stream_video "latest-960.mp4")
 
     echo "Latest timelapse video id ${timelapse_video_id}" | tee -a $log_file
 
