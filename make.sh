@@ -72,8 +72,8 @@ print_stats () {
 }
 
 upload_stream_video () {
-    filename=$1
-    response=$(curl --limit-rate ${CURL_UPLOAD_LIMIT} -X POST --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}" -F file=@$dir/$filename https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream)
+    filepath=$1
+    response=$(curl --limit-rate ${CURL_UPLOAD_LIMIT} -X POST --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}" -F file=@$filepath https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream)
     video_id=$(jq -r '.result.uid' <<<"$response")
     echo $video_id
 }
@@ -168,7 +168,7 @@ if [ "$1" != "sunset" ]; then
     tik=$SECONDS
 
     echo "Uploading latest clip..." | tee -a $log_file
-    clip_video_id=$(upload_stream_video "latest-clip-60.mp4")
+    clip_video_id=$(upload_stream_video "${processing_dir}/latest-clip-60.mp4")
 
     echo "Latest clip video id ${clip_video_id}" | tee -a $log_file
     
@@ -195,7 +195,7 @@ if [ $(( 10#$start_minute % $DAILY_TIMELAPSE_UPLOAD_INTERVAL )) -eq 0 ] || [ "$1
     tik=$SECONDS
 
     echo "Uploading latest daily timelapse..." | tee -a $log_file
-    timelapse_video_id=$(upload_stream_video "latest-960.mp4")
+    timelapse_video_id=$(upload_stream_video "${processing_dir}/${date}-960.mp4")
 
     echo "Latest timelapse video id ${timelapse_video_id}" | tee -a $log_file
 
