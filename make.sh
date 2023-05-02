@@ -215,7 +215,7 @@ if [ $(( 10#$start_minute % $DAILY_TIMELAPSE_UPLOAD_INTERVAL )) -eq 0 ] || [ "$1
 
     print_stats $tik "Latest timelapse upload"
 else
-    echo "Skipping latest timelapse upload" | tee -a $log_file
+    echo "Skipping latest timelapse processing and upload" | tee -a $log_file
 fi
 
 mv $processing_dir/*.mp4 $dir
