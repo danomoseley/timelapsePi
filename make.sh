@@ -10,7 +10,7 @@ libx264_preset=${LIBX264_PRESET:-medium}
 libx264_crf=${LIBX264_CRF:-17}
 
 # Mystery value to help fix extra frame lag between stitched timelapse chunks
-snip_microseconds=${SNIP_MICROSECONDS:-90500}
+snip_microseconds=${SNIP_MICROSECONDS:-89600}
 
 CURL_UPLOAD_LIMIT=${CURL_UPLOAD_LIMIT:-500k}
 DAILY_TIMELAPSE_UPLOAD_INTERVAL=${DAILY_TIMELAPSE_UPLOAD_INTERVAL:-30}
@@ -71,49 +71,6 @@ print_stats () {
     echo "${display_name}: ${elapsed_time} (${elapsed_seconds}s)" | tee -a $log_file
 }
 
-echo "$(date '+%y%m%d%H%M%S')" | tee -a $log_file
-
-tik=$SECONDS
-echo "Starting rsync..." | tee -a $log_file
-nice -19 rsync --remove-source-files -a --include="${date}*.h264" --exclude='*' pi@192.168.2.14:~/timelapsePi/vid/ $tmp_dir
-print_stats $tik "Rsync"
-
-shopt -s nullglob
-for f in $tmp_dir/*.h264; do echo "file '$f'" >> "$processing_dir/${date}-list.txt"; done
-shopt -u nullglob
-
-if [ ! -s "$processing_dir/${date}-list.txt" ]; then
-    echo "Nothing to do, exiting." | tee -a $log_file
-    rm -Rf $tmp_dir
-    exit
-fi
-
-tik=$SECONDS
-echo "Starting FFmpeg 60x processing (preset: ${libx264_preset}, crf: ${libx264_crf})..." | tee -a $log_file
-nice -19 ffmpeg -loglevel error -y -r 25 -f concat -safe 0 -i $processing_dir/${date}-list.txt -filter:v "setpts=PTS/60" -c:v libx264 -preset "$libx264_preset" -crf "$libx264_crf" -an -ss "${snip_microseconds}us" -f mp4 "${processing_dir}/${date}-60.mp4" | tee -a $log_file
-print_stats $tik "FFmpeg 60x"
-
-append_new_video "60"
-
-nice -19 ffmpeg -loglevel error -y -r 25 -sseof -10 -i "${processing_dir}/${date}-60.mp4" -c copy "${processing_dir}/latest-clip-60.mp4" | tee -a $log_file
-
-if [ $(( 10#$start_minute % $DAILY_TIMELAPSE_UPLOAD_INTERVAL )) -eq 0 ] || [ "$1" == "sunset" ]; then 
-    tik=$SECONDS
-    echo "Starting FFmpeg 960x processing..." | tee -a $log_file
-    nice -19 ffmpeg -loglevel error -y -i "${processing_dir}/${date}-60.mp4" -filter:v "setpts=PTS/16" -c:v libx264 -preset "$libx264_preset" -crf "$libx264_crf" -an -f mp4 "${processing_dir}/${date}-960.mp4" | tee -a $log_file
-    print_stats $tik "FFmpeg 960x"
-fi
-
-mv $processing_dir/*.mp4 $dir
-
-trap - EXIT
-
-rm -Rf $tmp_dir
-
-ln -sf "${dir}/${date}-60.mp4" "${dir}/latest-60.mp4"
-ln -sf "${dir}/${date}-960.mp4" "${dir}/latest-960.mp4"
-ln -sf "$log_file" "${dir}/latest-output.txt"
-
 upload_stream_video () {
     filename=$1
     response=$(curl --limit-rate ${CURL_UPLOAD_LIMIT} -X POST --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}" -F file=@$dir/$filename https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream)
@@ -165,7 +122,31 @@ put_kv_value () {
     echo "KV success: ${success}" | tee -a $log_file
 }
 
-upload_tik=$SECONDS
+echo "$(date '+%y%m%d%H%M%S')" | tee -a $log_file
+
+tik=$SECONDS
+echo "Starting rsync..." | tee -a $log_file
+nice -19 rsync --remove-source-files -a --include="${date}*.h264" --exclude='*' pi@192.168.2.14:~/timelapsePi/vid/ $tmp_dir
+print_stats $tik "Rsync"
+
+shopt -s nullglob
+for f in $tmp_dir/*.h264; do echo "file '$f'" >> "$processing_dir/${date}-list.txt"; done
+shopt -u nullglob
+
+if [ ! -s "$processing_dir/${date}-list.txt" ]; then
+    echo "Nothing to do, exiting." | tee -a $log_file
+    rm -Rf $tmp_dir
+    exit
+fi
+
+tik=$SECONDS
+echo "Starting FFmpeg 60x processing (preset: ${libx264_preset}, crf: ${libx264_crf})..." | tee -a $log_file
+nice -19 ffmpeg -loglevel error -y -r 25 -f concat -safe 0 -i $processing_dir/${date}-list.txt -filter:v "setpts=PTS/60" -c:v libx264 -preset "$libx264_preset" -crf "$libx264_crf" -an -ss "${snip_microseconds}us" -f mp4 "${processing_dir}/${date}-60.mp4" | tee -a $log_file
+print_stats $tik "FFmpeg 60x"
+
+append_new_video "60"
+
+nice -19 ffmpeg -loglevel error -y -r 25 -sseof -10 -i "${processing_dir}/${date}-60.mp4" -c copy "${processing_dir}/latest-clip-60.mp4" | tee -a $log_file
 
 echo "Starting upload to Cloudflare Stream..." | tee -a $log_file
 
@@ -207,6 +188,11 @@ fi
 
 if [ $(( 10#$start_minute % $DAILY_TIMELAPSE_UPLOAD_INTERVAL )) -eq 0 ] || [ "$1" == "sunset" ]; then
     tik=$SECONDS
+    echo "Starting FFmpeg 960x processing..." | tee -a $log_file
+    nice -19 ffmpeg -loglevel error -y -i "${processing_dir}/${date}-60.mp4" -filter:v "setpts=PTS/16" -c:v libx264 -preset "$libx264_preset" -crf "$libx264_crf" -an -f mp4 "${processing_dir}/${date}-960.mp4" | tee -a $log_file
+    print_stats $tik "FFmpeg 960x"
+
+    tik=$SECONDS
 
     echo "Uploading latest daily timelapse..." | tee -a $log_file
     timelapse_video_id=$(upload_stream_video "latest-960.mp4")
@@ -232,6 +218,15 @@ else
     echo "Skipping latest timelapse upload" | tee -a $log_file
 fi
 
-print_stats $upload_tik "Total upload"
+mv $processing_dir/*.mp4 $dir
+
+trap - EXIT
+
+rm -Rf $tmp_dir
+
+ln -sf "${dir}/${date}-60.mp4" "${dir}/latest-60.mp4"
+ln -sf "${dir}/${date}-960.mp4" "${dir}/latest-960.mp4"
+ln -sf "$log_file" "${dir}/latest-output.txt"
+
 print_stats $start "Total processing"
 
