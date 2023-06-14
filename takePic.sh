@@ -18,16 +18,16 @@ floatToInt() {
    printf "%.0f\n" "$@"
 }
 source $DIR/config.cfg
-v4l2-ctl -d /dev/video0 --set-ctrl="focus_auto=0"
+v4l2-ctl -d /dev/video0 --set-ctrl="focus_automatic_continuous=0"
 v4l2-ctl -d /dev/video0 --set-ctrl="focus_absolute=0"
-v4l2-ctl -d /dev/video0 --set-ctrl="exposure_auto_priority=0"
-v4l2-ctl -d /dev/video0 --set-ctrl="exposure_auto=1"
+#v4l2-ctl -d /dev/video0 --set-ctrl="exposure_auto_priority=0"
+v4l2-ctl -d /dev/video0 --set-ctrl="auto_exposure=1"
 exposure_absolute=$EXPOSURE_ABSOLUTE
 white_balance_temperature=4300
 
 while true; do
-    v4l2-ctl -d /dev/video0 --set-ctrl="exposure_absolute=$exposure_absolute"
-    val=$(v4l2-ctl -d /dev/video0 --get-ctrl="exposure_absolute" | awk '{ print $2 }')
+    v4l2-ctl -d /dev/video0 --set-ctrl="exposure_time_absolute=$exposure_absolute"
+    val=$(v4l2-ctl -d /dev/video0 --get-ctrl="exposure_time_absolute" | awk '{ print $2 }')
     if [[ $val -eq $exposure_absolute ]]; then
         break
     fi
@@ -35,7 +35,7 @@ done
 v4l2-ctl -d /dev/video0 --set-ctrl="brightness=128"
 v4l2-ctl -d /dev/video0 --set-ctrl="contrast=128"
 v4l2-ctl -d /dev/video0 --set-ctrl="saturation=128"
-v4l2-ctl -d /dev/video0 --set-ctrl="white_balance_temperature_auto=0"
+v4l2-ctl -d /dev/video0 --set-ctrl="white_balance_automatic=0"
 
 while true; do
     v4l2-ctl -d /dev/video0 --set-ctrl="white_balance_temperature=$white_balance_temperature"
@@ -140,4 +140,3 @@ while [ $failed_pics -lt 3 ]; do
 done
 echo "No valid pics after 5 attempts"
 reboot $OUT
-
