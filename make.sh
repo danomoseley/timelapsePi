@@ -104,6 +104,13 @@ wait_for_video_ready_to_stream () {
     done
 }
 
+generate_stream_video_downloads () {
+    video_id=$1
+    response=$(curl --limit-rate ${CURL_UPLOAD_LIMIT} -X POST --header "Authorization: Bearer ${CLOUDFLARE_AUTH_TOKEN}" https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream/$video_id/downloads)
+    url=$(jq -r '.result.default.url' <<<"$response")
+    echo $url
+}
+
 delete_stream_video () {
     video_id=$1
     echo "Deleting Cloudflare Stream video (id: ${video_id})" | tee -a $log_file
@@ -177,6 +184,8 @@ if [ "$1" != "sunset" ]; then
     echo "Latest clip video id ${clip_video_id}" | tee -a $log_file
 
     wait_for_video_ready_to_stream $clip_video_id "latest-clip-video-id"
+    url=$(generate_stream_video_downloads $clip_video_id)
+    put_kv_value "latest-clip-download-url" $url
 
     if [ -f "${dir}/latest_clip_video_id.txt" ]; then
         latest_clip_video_id=$(cat "${dir}/latest_clip_video_id.txt")
