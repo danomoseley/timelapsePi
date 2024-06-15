@@ -227,6 +227,8 @@ if [ $(( 10#$start_minute % $DAILY_TIMELAPSE_UPLOAD_INTERVAL )) -eq 0 ] || [ "$1
     echo "Latest timelapse video id ${timelapse_video_id}" | tee -a $log_file
 
     wait_for_video_ready_to_stream $timelapse_video_id "latest-video-id"
+    url=$(generate_stream_video_downloads $timelapse_video_id)
+    put_kv_value "latest-timelapse-download-url" $url
 
     if [ -f "${dir}/latest_timelapse_video_id.txt" ]; then
         latest_timelapse_video_id=$(cat "${dir}/latest_timelapse_video_id.txt")
