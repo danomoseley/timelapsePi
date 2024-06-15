@@ -148,6 +148,10 @@ append_new_video "60"
 
 nice -19 ffmpeg -loglevel error -y -r 25 -sseof -10 -i "${processing_dir}/${date}-60.mp4" -c copy "${processing_dir}/latest-clip-60.mp4" | tee -a $log_file
 
+tik=$SECONDS
+/home/dan/nvidia/ffmpeg/ffmpeg -loglevel error -y -hwaccel cuda -i "${processing_dir}/latest-clip-60.mp4" -an -c:v h264_nvenc -preset p7 -tune hq -rc constqp -f mp4 "${processing_dir}/latest-clip-60-web.mp4" | tee -a $log_file
+print_stats $tik "FFmpeg latest-clip-60-web"
+
 echo "Starting upload to Cloudflare Stream..." | tee -a $log_file
 
 echo "Deleting previous videos" | tee -a $log_file
@@ -168,12 +172,12 @@ if [ "$1" != "sunset" ]; then
     tik=$SECONDS
 
     echo "Uploading latest clip..." | tee -a $log_file
-    clip_video_id=$(upload_stream_video "${processing_dir}/latest-clip-60.mp4")
+    clip_video_id=$(upload_stream_video "${processing_dir}/latest-clip-60-web.mp4")
 
     echo "Latest clip video id ${clip_video_id}" | tee -a $log_file
-    
+
     wait_for_video_ready_to_stream $clip_video_id "latest-clip-video-id"
-    
+
     if [ -f "${dir}/latest_clip_video_id.txt" ]; then
         latest_clip_video_id=$(cat "${dir}/latest_clip_video_id.txt")
         echo $latest_clip_video_id > "${dir}/previous_clip_video_id.txt"
@@ -188,14 +192,28 @@ fi
 
 if [ $(( 10#$start_minute % $DAILY_TIMELAPSE_UPLOAD_INTERVAL )) -eq 0 ] || [ "$1" == "sunset" ]; then
     tik=$SECONDS
-    echo "Starting FFmpeg 960x processing..." | tee -a $log_file
-    nice -19 ffmpeg -loglevel error -y -i "${processing_dir}/${date}-60.mp4" -filter:v "setpts=PTS/16" -c:v libx264 -preset "$libx264_preset" -crf "$libx264_crf" -an -f mp4 "${processing_dir}/${date}-960.mp4" | tee -a $log_file
-    print_stats $tik "FFmpeg 960x"
+    echo "Starting FFmpeg 480x processing..." | tee -a $log_file
+    #/home/dan/nvidia/ffmpeg/ffmpeg -loglevel error -y -hwaccel cuda -i "${processing_dir}/${date}-60.mp4" -filter:v "setpts=PTS/16" -an -c:v h264_nvenc -preset p7 -tune hq -rc constqp -f mp4 "${processing_dir}/${date}-960.mp4" | tee -a $log_file
+    /home/dan/nvidia/ffmpeg/ffmpeg -loglevel error -y -hwaccel cuda -i "${processing_dir}/${date}-60.mp4" -filter:v "setpts=PTS/8" -an -c:v h264_nvenc -preset p7 -tune hq -rc constqp -f mp4 "${processing_dir}/${date}-480.mp4" | tee -a $log_file
+    #nice -19 ffmpeg -loglevel error -y -i "${processing_dir}/${date}-60.mp4" -filter:v "setpts=PTS/16" -c:v libx264 -preset "$libx264_preset" -crf "$libx264_crf" -an -f mp4 "${processing_dir}/${date}-960.mp4" | tee -a $log_file
+    print_stats $tik "FFmpeg 480x"
+fi
 
+mv $processing_dir/*.mp4 $dir
+
+trap - EXIT
+
+rm -Rf $tmp_dir
+
+ln -sf "${dir}/${date}-60.mp4" "${dir}/latest-60.mp4"
+ln -sf "${dir}/${date}-480.mp4" "${dir}/latest-480.mp4"
+ln -sf "$log_file" "${dir}/latest-output.txt"
+
+if [ $(( 10#$start_minute % $DAILY_TIMELAPSE_UPLOAD_INTERVAL )) -eq 0 ] || [ "$1" == "sunset" ]; then
     tik=$SECONDS
 
     echo "Uploading latest daily timelapse..." | tee -a $log_file
-    timelapse_video_id=$(upload_stream_video "${processing_dir}/${date}-960.mp4")
+    timelapse_video_id=$(upload_stream_video "${dir}/${date}-480.mp4")
 
     echo "Latest timelapse video id ${timelapse_video_id}" | tee -a $log_file
 
