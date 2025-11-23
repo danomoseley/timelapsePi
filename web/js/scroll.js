@@ -46,14 +46,20 @@ $(document).ready(function() {
   getDays();
 });
 
-function getDays() {
+function getDays(ContinuationToken = null) {
   var s3 = new AWS.S3();
   var params = {
     Bucket: "camp.danomoseley.com",
     Prefix: "archive/photo/",
     Delimiter: "/"
   };
-  $('#date').find('option').remove();
+
+  if (ContinuationToken !== null) {
+    params['ContinuationToken'] = ContinuationToken
+  } else {
+    $('#date').find('option').remove();
+  }
+
   s3.listObjectsV2(params, function(err, data) {
    if (err) {
       console.log(err, err.stack);
@@ -65,7 +71,11 @@ function getDays() {
         date_day = date.substring(4);
         $('#date').append('<option value="'+date+'">'+date_month+'/'+date_day+'/'+date_year+'</option>');
       }
-      $('#date').val(date).selectmenu("refresh", true);
+      if (data.IsTruncated) {
+        getDays(data.NextContinuationToken)
+      } else {
+        $('#date').val(date).selectmenu("refresh", true);
+      }
     }
   });
 }
