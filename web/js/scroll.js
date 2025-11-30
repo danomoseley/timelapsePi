@@ -37,13 +37,39 @@ $(document).ready(function() {
     }
   });
 
-  AWS.config.update({
-    accessKeyId: "CREATE_IAM_USER_WITH_NO_PERMISSIONS",
-    secretAccessKey: "CREATE_IAM_USER_WITH_NO_PERMISSIONS"
+  const identity_pool_id = 'YOUR_IDENTITY_POOL_ID'
+  AWS.config.region = 'us-east-1';
+  
+  var cognito_identity = new AWS.CognitoIdentity();
+  cognito_identity.getId({
+    IdentityPoolId: identity_pool_id,
+  }, function(err, data) {
+    if (err) {
+      console.log(err);
+    } else {
+      var identityId = data.IdentityId;
+      console.log("Identity ID:", identityId);
+      var credentials = new AWS.CognitoIdentityCredentials({
+        IdentityPoolId: identity_pool_id,
+        IdentityId: identityId,
+      });
+
+      credentials.get(function(err) {
+        if (err) {
+          console.log(err);
+        } else {
+          AWS.config.update({
+            accessKeyId: credentials.accessKeyId,
+            secretAccessKey: credentials.secretAccessKey,
+            sessionToken: credentials.sessionToken,
+          });
+          today_date = parseInt(moment().format('YYMMDD'));
+          getPics(today_date);
+          getDays();
+        }
+      });
+    }
   });
-  today_date = parseInt(moment().format('YYMMDD'));
-  getPics(today_date);
-  getDays();
 });
 
 function getDays(ContinuationToken = null) {
